@@ -104,7 +104,12 @@ def sample_fact(s):
          "nstates": len(s["states"]), "order": s["order"], "npred": s["npred"]}
     if s["codec"] in (0, 3):                  # CODEC_ADPCM 9-byte / CODEC_SMALL_ADPCM 5-byte frames
         bits = 4 if s["codec"] == 0 else 2
-        pcm = vadpcm.decode(s["data"], book_dict(s), bits=bits).astype(np.float64)
+        try:
+            pcm = vadpcm.decode(s["data"], book_dict(s), bits=bits).astype(np.float64)
+        except IndexError:                    # frames name predictors the book lacks (a few unused MM samples)
+            d["nframes"] = len(s["data"]) // (1 + 2 * bits) * 16
+            d["undecodable"] = True
+            return d, False
         d["nframes"] = len(s["data"]) // (1 + 2 * bits) * 16
     elif s["codec"] == 1:                     # CODEC_S8
         pcm = np.frombuffer(s["data"], np.int8).astype(np.float64) * 256

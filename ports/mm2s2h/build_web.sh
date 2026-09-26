@@ -20,5 +20,5 @@ if ! grep -q "fwasm-exceptions" "$BUILD/CMakeCache.txt"; then
   cmake "$BUILD" "-DCMAKE_CXX_FLAGS=-DFMT_CONSTEVAL= -fwasm-exceptions" "-DCMAKE_C_FLAGS=-fwasm-exceptions" \
     "-DCMAKE_EXE_LINKER_FLAGS=-fwasm-exceptions" 2>&1 | tail -3
 fi
-cmake --build "$BUILD" --target "${@:-2ship}" -j ${JOBS:-4} 2>&1 | grep -vE "(em\+\+|emcc)(\.exe)? " | grep -E "error|FAILED|^\[[0-9]+/[0-9]+\] Link" | head -40
+cmake --build "$BUILD" --target "${@:-2ship}" -j ${JOBS:-4} -- -k ${KEEP:-1} 2>&1 | grep -vE "(em\+\+|emcc)(\.exe)? " | grep -E "error|FAILED|^\[[0-9]+/[0-9]+\] Link" | head -40
 echo "build exit: ${PIPESTATUS[0]}"

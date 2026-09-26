@@ -18,7 +18,7 @@ WEB_LINK = r'''
 if(BUILD_FOR_WEB)
     target_compile_options(${PROJECT_NAME} PRIVATE
         -sUSE_SDL=2 -sUSE_OGG=1 -sUSE_VORBIS=1 -sUSE_ZLIB=1
-        -w
+        -w -Wno-c++11-narrowing -Wno-narrowing
         $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>
         $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion>
     )
