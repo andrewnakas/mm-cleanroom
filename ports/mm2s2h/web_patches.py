@@ -97,6 +97,20 @@ PATCHES = [
      '-o ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt OUTPUT_VARIABLE RESULT)\nendif()\n'),
 
     # ---------------------------------------------------------------- ZAPD as a node CLI (dirty-room extraction)
+    ("OTRExporter/OTRExporter/CMakeLists.txt",
+     'find_package(nlohmann_json REQUIRED)\n',
+     'if(NOT TARGET nlohmann_json::nlohmann_json)\nfind_package(nlohmann_json REQUIRED)\nendif()\n'),
+    ("OTRExporter/OTRExporter/CMakeLists.txt",
+     'find_package(spdlog REQUIRED)\n',
+     'if(NOT TARGET spdlog::spdlog)\nfind_package(spdlog REQUIRED)\nendif()\n'),
+    ("ZAPDTR/ZAPD/CMakeLists.txt",
+     'find_package(PNG REQUIRED)\n',
+     'if(EMSCRIPTEN)\n'
+     '    # emscripten port (embuilder build libpng)\n'
+     '    set(PNG_LIBRARY "$ENV{EM_CACHE}/sysroot/lib/wasm32-emscripten/libpng.a" CACHE FILEPATH "" FORCE)\n'
+     '    set(PNG_PNG_INCLUDE_DIR "$ENV{EM_CACHE}/sysroot/include" CACHE PATH "" FORCE)\n'
+     'endif()\n'
+     'find_package(PNG REQUIRED)\n'),
     ("ZAPDTR/ZAPD/CMakeLists.txt",
      'target_link_libraries(ZAPD ${PROJECT_NAME})\n',
      'target_link_libraries(ZAPD ${PROJECT_NAME})\n'

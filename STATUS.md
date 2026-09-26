@@ -3,7 +3,11 @@
 _Last update: 2026-09-25 ~23:40_
 
 ## For the morning
-- (in progress) Web build of 2 Ship 2 Harkinian; nothing to look at yet.
+- **BLOCKED (needs your OK):** the Emscripten build (ZAPD + 2S2H) was stopped by Claude Code at ~23:40 because the
+  machine ran low on memory (seven sessions; ~4 GB free of 32 GB). Its rule is not to restart a reaped job without
+  being asked. To resume: `bash ports/mm2s2h/build_web.sh ZAPD` then `bash ports/mm2s2h/build_web.sh 2ship`
+  (patches already applied to `D:/n64work/mm/2s2h`; the configure step had passed PNG/zlib/libzip).
+- Web build of 2 Ship 2 Harkinian: nothing to look at yet.
 
 ## Decisions (log)
 1. **Web route = 2 Ship 2 Harkinian (2S2H, the MM PC port) built with Emscripten**, porting zalo's SoH web patches.
