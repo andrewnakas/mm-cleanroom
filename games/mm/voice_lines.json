@@ -1,0 +1,222 @@
+{
+ "_doc": "Placeholder TTS lines for voice sample slots (words from the sample names). who -> _characters[who].tts (Piper model, pitch lift, speed).",
+ "_characters": {
+  "link_adult": {
+   "tts": {
+    "model": "en_US-ryan-high",
+    "semitones": 1.0,
+    "length": 0.9
+   }
+  },
+  "link_child": {
+   "tts": {
+    "model": "en_US-amy-medium",
+    "semitones": 3.0,
+    "length": 0.9
+   }
+  },
+  "navi": {
+   "tts": {
+    "model": "en_US-kristin-medium",
+    "semitones": 6.0,
+    "length": 0.8
+   }
+  },
+  "ganondorf": {
+   "tts": {
+    "model": "en_US-joe-medium",
+    "semitones": -4.0,
+    "length": 1.1
+   }
+  },
+  "girl": {
+   "tts": {
+    "model": "en_US-amy-medium",
+    "semitones": 2.0,
+    "length": 0.9
+   }
+  },
+  "woman": {
+   "tts": {
+    "model": "en_US-kristin-medium",
+    "semitones": 0.0,
+    "length": 0.9
+   }
+  },
+  "witch": {
+   "tts": {
+    "model": "en_US-hfc_female-medium",
+    "semitones": 3.0,
+    "length": 0.9
+   }
+  },
+  "fairy": {
+   "tts": {
+    "model": "en_US-hfc_female-medium",
+    "semitones": 1.0,
+    "length": 1.0
+   }
+  },
+  "goron": {
+   "tts": {
+    "model": "en_US-joe-medium",
+    "semitones": -3.0,
+    "length": 1.0
+   }
+  },
+  "man": {
+   "tts": {
+    "model": "en_US-joe-medium",
+    "semitones": 0.0,
+    "length": 0.9
+   }
+  },
+  "gerudo": {
+   "tts": {
+    "model": "en_US-hfc_female-medium",
+    "semitones": -1.0,
+    "length": 0.9
+   }
+  }
+ },
+ "audio/samples/AdultLinkAttack1_META": {
+  "who": "link_adult",
+  "text": "Hyah!"
+ },
+ "audio/samples/AdultLinkAttack2_META": {
+  "who": "link_adult",
+  "text": "Hyah!"
+ },
+ "audio/samples/AdultLinkAttack3_META": {
+  "who": "link_adult",
+  "text": "Hyah!"
+ },
+ "audio/samples/AdultLinkAttack4_META": {
+  "who": "link_adult",
+  "text": "Hyah!"
+ },
+ "audio/samples/AdultLinkFalling1_META": {
+  "who": "link_adult",
+  "text": "Waaah!"
+ },
+ "audio/samples/AdultLinkFalling2_META": {
+  "who": "link_adult",
+  "text": "Waaah!"
+ },
+ "audio/samples/AdultLinkGasp1_META": {
+  "who": "link_adult",
+  "text": "Hah!"
+ },
+ "audio/samples/AdultLinkHup_META": {
+  "who": "link_adult",
+  "text": "Hup!"
+ },
+ "audio/samples/AdultLinkStrongAttack1_META": {
+  "who": "link_adult",
+  "text": "Hyaaah!"
+ },
+ "audio/samples/AdultLinkStrongAttack2_META": {
+  "who": "link_adult",
+  "text": "Hyaaah!"
+ },
+ "audio/samples/ChildLinkAwakeningGrunt_META": {
+  "who": "link_child",
+  "text": "Nngh!"
+ },
+ "audio/samples/ChildLinkCastAttackSpell_META": {
+  "who": "link_child",
+  "text": "Hyah!"
+ },
+ "audio/samples/ChildLinkGasp1_META": {
+  "who": "link_child",
+  "text": "Hah!"
+ },
+ "audio/samples/ChildLinkGasp2_META": {
+  "who": "link_child",
+  "text": "Hah!"
+ },
+ "audio/samples/ChildLinkGlug_META": {
+  "who": "link_child",
+  "text": "Glug."
+ },
+ "audio/samples/ChildLinkGrunt_META": {
+  "who": "link_child",
+  "text": "Nngh!"
+ },
+ "audio/samples/ChildLinkMoansFromHeat_META": {
+  "who": "link_child",
+  "text": "Ohh."
+ },
+ "audio/samples/ChildLinkShivers_META": {
+  "who": "link_child",
+  "text": "Ohh."
+ },
+ "audio/samples/ChildLinkSneeze_META": {
+  "who": "link_child",
+  "text": "Achoo!"
+ },
+ "audio/samples/ChildLinkStretchRefreshingly_META": {
+  "who": "link_child",
+  "text": "Ahh."
+ },
+ "audio/samples/ChildLinkStrongAttack1_META": {
+  "who": "link_child",
+  "text": "Hyaaah!"
+ },
+ "audio/samples/ChildLinkStrongAttack2_META": {
+  "who": "link_child",
+  "text": "Hyaaah!"
+ },
+ "audio/samples/ChildLinkWipingOffSweat_META": {
+  "who": "link_child",
+  "text": "Phew."
+ },
+ "audio/samples/ChildLinkYawnStarts_META": {
+  "who": "link_child",
+  "text": "Ahh."
+ },
+ "audio/samples/ChildLinkYawnandStretch_META": {
+  "who": "link_child",
+  "text": "Ahh."
+ },
+ "audio/samples/GoronInquiring_META": {
+  "who": "goron",
+  "text": "Hmm?"
+ },
+ "audio/samples/GoronRecognizes_META": {
+  "who": "goron",
+  "text": "Oh!"
+ },
+ "audio/samples/GoronYawn_META": {
+  "who": "goron",
+  "text": "Ahh."
+ },
+ "audio/samples/GoronandRedeadMoan_META": {
+  "who": "goron",
+  "text": "Ohh."
+ },
+ "audio/samples/GreatFairyLaughter_META": {
+  "who": "fairy",
+  "text": "Ha ha ha!"
+ },
+ "audio/samples/GreatFairyTitters_META": {
+  "who": "fairy",
+  "text": "Ha ha ha!"
+ },
+ "audio/samples/IngoExclaims_META": {
+  "who": "man",
+  "text": "Hey!"
+ },
+ "audio/samples/IngoHyah_META": {
+  "who": "man",
+  "text": "Hyah!"
+ },
+ "audio/samples/IngoHyeaaaaugh_META": {
+  "who": "man",
+  "text": "Hyeaaah!"
+ },
+ "audio/samples/IngoYowls_META": {
+  "who": "man",
+  "text": "Aaah!"
+ }
+}
