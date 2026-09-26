@@ -64,6 +64,8 @@ def pair_tlut(n, tex):
     """Tex <-> TLUT by name in the same folder or its *_pal_static twin."""
     d, base = n.rsplit("/", 1)
     dirs = {d, d.replace("_static", "_pal_static")}
+    if "/d2_" in "/" + d:                       # MM skyboxes: one palette file for every sky
+        dirs.add("misc/d2_fine_pal_static")
     cands = [p for p in tex if p.rsplit("/", 1)[0] in dirs and ("TLUT" in p or "Pal" in p.rsplit("/", 1)[1])
              and tex[p]["type"] == 2]
     if not cands:
@@ -175,6 +177,24 @@ def main(argv):
             how["carried"] += 1
             continue
         how["none"] += 1
+    # palettes the code loads itself (NPC eyes, many MM objects): the palette the rest of the
+    # object uses, else the object's only TLUT
+    for n, t in tex.items():
+        if t["type"] not in (3, 4) or n in pal_of:
+            continue
+        d = n.rsplit("/", 1)[0]
+        near = collections.Counter(pal_of[m][0] for m in pal_of if m.rsplit("/", 1)[0] == d
+                                   and tex[m]["type"] == t["type"])
+        tluts = [p for p in tex if p.rsplit("/", 1)[0] == d and tex[p]["type"] == 2
+                 and ("TLUT" in p or "Pal" in p.rsplit("/", 1)[1])]
+        if near:
+            pal_of[n] = [near.most_common(1)[0][0]]
+            how["object"] += 1
+            how["none"] -= 1
+        elif len(tluts) == 1:
+            pal_of[n] = tluts
+            how["object"] += 1
+            how["none"] -= 1
     palettes = collections.defaultdict(list)
     for n, ps in pal_of.items():
         for p in ps:

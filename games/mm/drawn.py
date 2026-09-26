@@ -576,6 +576,11 @@ def fairy(path, d):
 
 
 def texture(path, d):
+    img = _texture("/" + path.lstrip("/"), d)     # MM archive folders are top level ("nes_font_static/...")
+    return img
+
+
+def _texture(path, d):
     if "/gameplay_keep/" in path and ("gCircleGlow" in path or path.endswith("gFairyWingTex")):
         img = fairy(path, d)
         if img is not None:
@@ -633,7 +638,7 @@ def texture(path, d):
         return label_tex(path, d, lines)
     try:
         from games.mm import faces
-        img = faces.texture(path, d)
+        img = faces.texture(path.lstrip("/"), d)
         if img is not None:
             return img
     except FileNotFoundError:

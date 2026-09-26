@@ -33,7 +33,7 @@ except ImportError:                  # optional hooks
     drawn = None
 
 
-SKY = ("vr_fine", "vr_cloud", "vr_holy")
+SKY = ("d2_fine", "d2_cloud", "vr_fine", "vr_cloud", "vr_holy")
 ROOMBG = re.compile(r"textures/vr_\w+VR_static/")       # prerendered room backdrops (shops, houses)
 
 
