@@ -7,6 +7,11 @@ _Last update: 2026-09-26 ~15:10_
 - Taint: 28,739 generated streams, **0 failing**.
 - Please look at: file select + name entry (re-typeset), title screen (ZELDA logo, mask picture drawn inside the kept silhouettes), faces in Clock Town, the sky.
 - Known issues: HUD not seen yet in my Clock Town test (entrance cutscenes); an intermittent freeze in the sound-effect lists was seen before the stale-state warp fix and not since; name-entry keyboard typing in scripted tests.
+- **Voices to record**: practice pack at `D:/n64work/mm/practice_pack` (35 lines, 5 characters: link_child, link_adult, goron, fairy, man/Ingo).
+  Play `practice_<character>_call_and_response.wav` and answer after each beep (SCRIPT.txt lists the lines), then
+  `CLEANROOM_GAME=games/mm python -m cleanroom.voice.takes cut <recording> <character> <takes>/<character>`.
+  Until then the slots use Piper TTS placeholders (`games/mm/voices`). Unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) still use resynthesised outlines.
+- Item icons: 107 rendered from the game's own get-item models with our textures (`games/mm/overrides/icons`).
 - Test hooks (dev, harmless on the live site): `?dev=cvar:value,...`, `?warp=0xD820&warpat=15`, `Module._web_gamestate()`, `Module._web_scene()`.
 
 ## Pipeline (all working)
