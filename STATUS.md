@@ -1,13 +1,13 @@
 # The Legend of Zelda: Majora's Mask clean room: status
 
-_Last update: 2026-09-26 ~07:30_
+_Last update: 2026-09-26 ~15:10_
 
 ## For the morning
-- **The web port boots and renders** (headless, local): intro (Happy Mask Salesman) and the Clock Town attract scene, with the dirty data (dev) and with the **clean** mm.o2r.
-- **Paused again for low memory (needs your OK):** Claude Code stopped the taint scan and a relink at ~07:25. Resume with:
-  - `python -m games.mm.taint_report D:/n64work/mm/dirty/mm.o2r D:/n64work/mm/clean/mm.o2r D:/n64work/mm/dirty/2ship.o2r`
-  - `bash ports/mm2s2h/build_web.sh 2ship` (adds the `?dev=` CVar hook for scripted tests)
-- Not published yet: taint must pass first. Then: play test to gameplay, text/faces/HUD check, publish.
+- **Play: https://andrewnakas.github.io/mm-cleanroom/** (repo public: andrewnakas/mm-cleanroom). Verified live in headless Edge: title, file select, name entry, Clock Town gameplay.
+- Taint: 28,739 generated streams, **0 failing**.
+- Please look at: file select + name entry (re-typeset), title screen (ZELDA logo, mask picture drawn inside the kept silhouettes), faces in Clock Town, the sky.
+- Known issues: HUD not seen yet in my Clock Town test (entrance cutscenes); an intermittent freeze in the sound-effect lists was seen before the stale-state warp fix and not since; name-entry keyboard typing in scripted tests.
+- Test hooks (dev, harmless on the live site): `?dev=cvar:value,...`, `?warp=0xD820&warpat=15`, `Module._web_gamestate()`, `Module._web_scene()`.
 
 ## Pipeline (all working)
 1. `python tools/mm_decompress.py <rom> baserom.dec.z64` (dirty)
