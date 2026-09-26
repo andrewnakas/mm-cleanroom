@@ -97,12 +97,28 @@ PATCHES = [
      '-o ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt OUTPUT_VARIABLE RESULT)\nendif()\n'),
 
     # ---------------------------------------------------------------- ZAPD as a node CLI (dirty-room extraction)
+    # no pthreads in the node CLI (ZAPD's directory mode is single threaded)
+    ("ZAPDTR/ZAPD/CMakeLists.txt",
+     '        $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-enum-enum-conversion>\n\t\t-pthread\n\t)\n',
+     '        $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-enum-enum-conversion>\n\t\t$<$<NOT:$<BOOL:${EMSCRIPTEN}>>:-pthread>\n\t)\n'),
+    ("ZAPDTR/ZAPD/CMakeLists.txt",
+     '    else()\n        target_link_options(${PROJECT_NAME} PUBLIC\n            -pthread\n            -Wl,-export-dynamic\n        )\n',
+     '    elseif(NOT EMSCRIPTEN)\n        target_link_options(${PROJECT_NAME} PUBLIC\n            -pthread\n            -Wl,-export-dynamic\n        )\n'),
+    ("ZAPDTR/ZAPD/CMakeLists.txt",
+     'if(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS")\nadd_library(pathconf OBJECT pathconf.c)\n',
+     'if(EMSCRIPTEN)\n    list(REMOVE_ITEM ADDITIONAL_LIBRARY_DEPENDENCIES Threads::Threads)\nendif()\n'
+     'if(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS")\nadd_library(pathconf OBJECT pathconf.c)\n'),
+    ("ZAPDTR/ZAPD/CrashHandler.cpp",
+     '#if __has_include(<unistd.h>)\n#define HAS_POSIX 1\n',
+     '#if __has_include(<unistd.h>) && !defined(__EMSCRIPTEN__)\n#define HAS_POSIX 1\n'),
     ("OTRExporter/OTRExporter/CMakeLists.txt",
      'find_package(nlohmann_json REQUIRED)\n',
      'if(NOT TARGET nlohmann_json::nlohmann_json)\nfind_package(nlohmann_json REQUIRED)\nendif()\n'),
     ("OTRExporter/OTRExporter/CMakeLists.txt",
      'find_package(spdlog REQUIRED)\n',
-     'if(NOT TARGET spdlog::spdlog)\nfind_package(spdlog REQUIRED)\nendif()\n'),
+     'if(NOT TARGET spdlog::spdlog)\nfind_package(spdlog REQUIRED)\nendif()\n'
+     'if(TARGET tinyxml2::tinyxml2)\ntarget_link_libraries(${PROJECT_NAME} PUBLIC tinyxml2::tinyxml2)\nendif()\n'
+     'if(TARGET libzip::zip)\ntarget_link_libraries(${PROJECT_NAME} PUBLIC libzip::zip)\nendif()\n'),
     ("ZAPDTR/ZAPD/CMakeLists.txt",
      'find_package(PNG REQUIRED)\n',
      'if(EMSCRIPTEN)\n'
