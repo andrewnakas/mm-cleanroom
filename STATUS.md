@@ -12,6 +12,8 @@ _Last update: 2026-09-26 ~15:10_
   `CLEANROOM_GAME=games/mm python -m cleanroom.voice.takes cut <recording> <character> <takes>/<character>`.
   Until then the slots use Piper TTS placeholders (`games/mm/voices`). Unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) still use resynthesised outlines.
 - Item icons: 107 rendered from the game's own get-item models with our textures (`games/mm/overrides/icons`).
+- Bombers' Notebook photos: 11 of 21 rendered from the characters' own skeletons (idle-animation pose, flex-skeleton matrices, our drawn eyes bound to segment 8; `games/mm/portraits.py`). The other 10 need correct object mappings/angles and still use the grid fallback.
+- File-select window drawn as one bevelled panel; Skull Kid balloon painted with Majora's Mask.
 - Test hooks (dev, harmless on the live site): `?dev=cvar:value,...`, `?warp=0xD820&warpat=15`, `Module._web_gamestate()`, `Module._web_scene()`.
 
 ## Pipeline (all working)
@@ -45,7 +47,7 @@ _Last update: 2026-09-26 ~15:10_
 
 ## Next
 - File-select window panel: draw the bevelled frame (currently blocky grid tiles).
-- Bombers' Notebook photos: skeleton render needs the idle animation's joint rotations + flex-skeleton matrix loads (`games/mm/portraits.py`, WIP).
+- Bombers' Notebook photos: fix the remaining 10 (object mapping for Curiosity Shop man, Gorman, Grog, Kamaro, Mayor, Postman, Rosa Sisters, Shiro, Toilet Hand, Toto).
 - Hylian-script signs (lottery shop, graves, letter address): draw with our own glyph set.
 - Voices: identify the unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) for TTS placeholders.
 - Verify pause screen/HUD in a proper new game (scripted name entry is flaky; warp saves skip the HUD).

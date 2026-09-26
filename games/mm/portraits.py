@@ -90,6 +90,68 @@ def bind_pose(files, skel_path):
     return limbs, pos
 
 
+def parse_anim(d):
+    p = o2r.HDR
+    if struct.unpack("<I", d[p:p + 4])[0] != 0:
+        return None                                   # only "Normal" animations
+    p += 4 + 2
+    n = struct.unpack("<I", d[p:p + 4])[0]
+    p += 4
+    vals = np.frombuffer(d[p:p + 2 * n], "<i2").astype(np.int32)
+    p += 2 * n
+    m = struct.unpack("<I", d[p:p + 4])[0]
+    p += 4
+    idx = np.frombuffer(d[p:p + 6 * m], "<u2").reshape(m, 3).astype(np.int32)
+    return vals, idx
+
+
+def _rot(rx, ry, rz):
+    a, b, c = (v * np.pi / 32768.0 for v in (rx, ry, rz))
+    X = np.array([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    Y = np.array([[np.cos(b), 0, np.sin(b)], [0, 1, 0], [-np.sin(b), 0, np.cos(b)]])
+    Z = np.array([[np.cos(c), -np.sin(c), 0], [np.sin(c), np.cos(c), 0], [0, 0, 1]])
+    return Z @ Y @ X                                   # Matrix_RotateZYX: X applied first
+
+
+def posed(files, skel_path, obj):
+    """world matrices (row-vector 4x4) per limb, frame 0 of the object's idle animation,
+    and the flex matrix list (limbs with a display list, in draw order)"""
+    names = parse_skel(files[skel_path])
+    limbs = [parse_limb(files[n]) if n in files else None for n in names]
+    anims = [n for n in files if n.startswith(f"objects/{obj}/") and o2r.rtype(files[n]) == "OANM"]
+    anims.sort(key=lambda n: (0 if re.search(r"(Idle|Wait|Stand)", n) else 1, n))
+    frame = None
+    for a in anims:
+        pa = parse_anim(files[a])
+        if pa and len(pa[1]) == len(limbs) + 1:
+            frame = pa
+            break
+    world, flex = {}, []
+
+    def val(i):
+        return int(frame[0][i]) if frame is not None and i < len(frame[0]) else 0
+
+    def walk(i, parent):
+        if i == 0xFF or i >= len(limbs) or limbs[i] is None:
+            return
+        lb = limbs[i]
+        t = lb["t"]
+        if i == 0 and frame is not None:
+            t = tuple(val(k) for k in frame[1][0])
+        r = tuple(val(k) for k in frame[1][i + 1]) if frame is not None else (0, 0, 0)
+        C = np.eye(4)
+        C[:3, :3] = _rot(*r)
+        C[:3, 3] = t
+        W = parent @ C
+        world[i] = W
+        if lb["dl"]:
+            flex.append(W.T.astype(np.float32))
+        walk(lb["child"], W)
+        walk(lb["sib"], parent)
+    walk(0, np.eye(4))
+    return limbs, {i: W.T.astype(np.float32) for i, W in world.items()}, flex
+
+
 def dl_textures(arc, name, depth=0, out=None):
     """texture paths and segment numbers a display list (and its calls) loads"""
     out = out if out is not None else set()
@@ -123,22 +185,22 @@ def head_parts(arc, files, obj):
     skels = [n for n in files if n.startswith(f"objects/{obj}/") and o2r.rtype(files[n]) == "OSKL"]
     best = None
     for sk in skels:
-        limbs, pos = bind_pose(files, sk)
+        limbs, world, flex = posed(files, sk, obj)
         for i, lb in enumerate(limbs):
-            if not lb or not lb["dl"] or lb["dl"] not in files:
+            if not lb or not lb["dl"] or lb["dl"] not in files or i not in world:
                 continue
             tex = dl_textures(arc, lb["dl"])
             eyes = any((isinstance(t, tuple) and t[1] == 8) or (isinstance(t, str) and "Eye" in t) for t in tex)
             if eyes:
-                parts = [(lb["dl"], pos[i])]
+                parts = [(lb["dl"], world[i])]
                 c = lb["child"]                    # hair, hats, masks hang off the head
                 while c != 0xFF and c < len(limbs) and limbs[c]:
-                    if limbs[c]["dl"] in files:
-                        parts.append((limbs[c]["dl"], pos.get(c, pos[i])))
+                    if limbs[c]["dl"] in files and c in world:
+                        parts.append((limbs[c]["dl"], world[c]))
                     c = limbs[c]["sib"]
                 if best is None or len(limbs) > best[0]:
-                    best = (len(limbs), parts)
-    return best[1] if best else None
+                    best = (len(limbs), parts, flex)
+    return (best[1], best[2]) if best else (None, None)
 
 
 def face_segments(files, obj):
@@ -158,12 +220,21 @@ def face_segments(files, obj):
 
 
 def render(arc, files, obj, size=32, ss=4, yaw=0, pitch=5):
-    parts = head_parts(arc, files, obj)
+    parts, flex = head_parts(arc, files, obj)
     if not parts:
         return None
     R = Renderer(arc, size * ss, cull=True)
     R.segments = face_segments(files, obj)
-    big = R.draw(parts, yaw, pitch, 0, margin=0.12)
+    R.limb_mtx = flex
+    R.mark = R.segments.get(8)
+    best = None
+    for y in (0, 45, 90, 135, 180, 225, 270, 315):      # the view that shows the most of the eyes
+        for pt in (-20, 5):
+            img = R.draw(parts, y, pt, 0, margin=0.12)
+            score = R.mark_px
+            if best is None or score > best[0]:
+                best = (score, img)
+    big = best[1]
     small = big.reshape(size, ss, size, ss, 4).mean((1, 3))
     a = small[..., 3:4]
     rgb = np.where(a > 0, small[..., :3] / np.maximum(a, 1e-6), 0)

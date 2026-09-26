@@ -68,6 +68,10 @@ class Renderer:
         self.tris = []                       # list of (pos3x3, uv3x2, shade3x4, state dict)
         self.light = np.asarray(light, np.float32) / np.linalg.norm(light)
         self.offset = np.zeros(3, np.float32)     # limb translation (skeleton bind pose)
+        self.mtx = None                           # current 4x4 model matrix (row vectors), None = identity
+        self.limb_mtx = []                        # flex skeletons: matrices the DLs load from segment 0x0D
+        self.mark = None                          # texture path whose visible pixels get counted (view choice)
+        self.mark_px = 0
         self.segments = {}                        # segment number -> texture path (eyes/mouths bound by code)
 
     # ---------------------------------------------------------------- DL walk
@@ -98,7 +102,11 @@ class Renderer:
                     a = self.arc.vtx(ref)[w1 // 16:w1 // 16 + n]
                     for i, v in enumerate(a):
                         if 0 <= v0 + i < 64:
-                            st["vbuf"][v0 + i] = v
+                            st["vbuf"][v0 + i] = self._load(v)
+            elif op == 0xDA and (w1 >> 24) == 0x0D and self.limb_mtx:   # gSPMatrix(0x0D000000 + i * 0x40)
+                i = (w1 & 0xFFFFFF) // 0x40
+                if i < len(self.limb_mtx):
+                    self.mtx = self.limb_mtx[i]
             elif op == 0xFD:                                   # G_SETTIMG with a segment address
                 seg = (w1 >> 24) & 0xF
                 if seg in self.segments:
@@ -135,17 +143,30 @@ class Renderer:
                 return
             p = nxt
 
+    def _load(self, v):
+        """one vertex, transformed by the current matrix at load time (like gSPVertex)"""
+        p = np.array([v["x"], v["y"], v["z"]], np.float32)
+        c = np.array([v["r"], v["g"], v["b"], v["a"]], np.float32)
+        nrm = c[:3].copy()
+        nrm[nrm > 127] -= 256
+        if self.mtx is not None:
+            p = np.append(p, 1.0) @ self.mtx
+            p = p[:3]
+            nrm = nrm @ self.mtx[:3, :3]
+        else:
+            p = p + self.offset
+        return (p, c, np.array([v["s"], v["t"]], np.float32) / 32.0, nrm)
+
     def tri(self, st, a, b, c):
         vs = [st["vbuf"][i] for i in (a, b, c)]
         if any(v is None for v in vs):
             return
-        pos = np.asarray([[v["x"], v["y"], v["z"]] for v in vs], np.float32) + self.offset
-        col = np.asarray([[v["r"], v["g"], v["b"], v["a"]] for v in vs], np.float32)
-        uv = np.asarray([[v["s"], v["t"]] for v in vs], np.float32) / 32.0
+        pos = np.asarray([v[0] for v in vs], np.float32)
+        col = np.asarray([v[1] for v in vs], np.float32)
+        uv = np.asarray([v[2] for v in vs], np.float32)
         lit = bool(st["geom"] & G_LIGHTING)
         if lit:
-            n = col[:, :3].copy()
-            n[n > 127] -= 256
+            n = np.asarray([v[3] for v in vs], np.float32)
             n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-6)
         else:
             n = None
@@ -163,6 +184,7 @@ class Renderer:
     def draw(self, dls, yaw=0.0, pitch=0.0, roll=0.0, margin=0.08, prim=None, env=None):
         """dls: display list paths, or (path, (x, y, z) offset) pairs for posed skeleton limbs."""
         self.tris = []
+        self.mark_px = 0
         self.new_state()                        # state carries across the list, like the game's draw code
         if prim is not None:
             self.state["prim"] = np.asarray(prim, np.float32) / 255
@@ -170,12 +192,16 @@ class Renderer:
             self.state["env"] = np.asarray(env, np.float32) / 255
         for dl in dls:
             if isinstance(dl, tuple):
-                self.offset = np.asarray(dl[1], np.float32)
+                o = np.asarray(dl[1], np.float32)
+                if o.shape == (4, 4):
+                    self.mtx, self.offset = o, np.zeros(3, np.float32)
+                else:
+                    self.mtx, self.offset = None, o
                 self.run(dl[0])
             else:
-                self.offset = np.zeros(3, np.float32)
+                self.mtx, self.offset = None, np.zeros(3, np.float32)
                 self.run(dl)
-        self.offset = np.zeros(3, np.float32)
+        self.mtx, self.offset = None, np.zeros(3, np.float32)
         S = self.size
         img = np.zeros((S, S, 4), np.float32)
         if not self.tris:
@@ -239,6 +265,8 @@ class Renderer:
             yy, xx = np.nonzero(vis)
             yy, xx = yy[keep] + y0, xx[keep] + x0
             zbuf[yy, xx] = z[vis][keep]
+            if self.mark is not None and ts.get("tex") == self.mark:
+                self.mark_px += int(keep.sum())
             img[yy, xx, :3] = np.clip(out[keep, :3], 0, 1)
             img[yy, xx, 3] = 1.0
         return img
