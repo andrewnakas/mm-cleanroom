@@ -305,6 +305,20 @@ PATCHES = [
      '}\n'
      '#endif\n'),
 
+    # sfx requests naming a bank that doesn't exist would write past gSfxBanks (wasm memory layout
+    # makes that corrupt the bank lists): drop them
+    ("mm/src/audio/sfx.c",
+     '    bankId = SFX_BANK(req->sfxId);\n    channelCount = 0;\n',
+     '    bankId = SFX_BANK(req->sfxId);\n'
+     '    if (bankId < 0 || bankId >= (s32)ARRAY_COUNT(gSfxBanks)) {\n'
+     '        static int sBadSfx = 0;\n'
+     '        if (sBadSfx++ < 8) {\n'
+     '            printf("[web] dropped sfx 0x%04X (bank %d)\\n", req->sfxId, bankId);\n'
+     '        }\n'
+     '        return;\n'
+     '    }\n'
+     '    channelCount = 0;\n'),
+
     # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
     ("mm/src/code/padmgr.c",
      'void PadMgr_ThreadEntry() {\n',
