@@ -452,6 +452,54 @@ def mm_balloon(path, d):
     return np.clip(out, 0, 255)
 
 
+_WIN = None
+
+
+def file_window(path, d):
+    """File-select window (4x5 IA16 tiles, tinted by the game): one bevelled panel drawn whole.
+    Alpha: every tile's kept 2-bit outline assembled into one panel and smoothed (the fade)."""
+    global _WIN
+    m = re.search(r"gFileSelWindow(\d)(\d)Tex$", path)
+    if not m:
+        return None
+    r, c = int(m.group(1)), int(m.group(2))
+    W, H = 240, 160
+    X0 = [0, 64, 128, 192]
+    if _WIN is None:
+        from cleanroom.decomp.gen import h32
+        T = spec()
+        alpha = np.full((H, W), 255.0, np.float32)
+        for p, t in T.items():
+            mm = re.search(r"gFileSelWindow(\d)(\d)Tex$", p)
+            if mm and "alpha2" in t:
+                rr, cc = int(mm.group(1)), int(mm.group(2))
+                alpha[rr * 32:rr * 32 + t["h"], X0[cc]:X0[cc] + t["w"]] = unpack_alpha2(t["alpha2"], t["w"], t["h"])
+        k = 15                                               # smooth the 2-bit steps into a fade
+        pad = np.pad(alpha, k, mode="edge")
+        cs = np.cumsum(np.cumsum(pad, 0), 1)
+        cs = np.pad(cs, ((1, 0), (1, 0)))
+        box = (cs[2 * k + 1:, 2 * k + 1:] - cs[:-2 * k - 1, 2 * k + 1:] - cs[2 * k + 1:, :-2 * k - 1] + cs[:-2 * k - 1, :-2 * k - 1])
+        smooth = box[:H, :W] / (2 * k + 1) ** 2
+        alpha = np.where((alpha < 8) & (xx_cut := (np.mgrid[0:H, 0:W][1] < 150)), 0, smooth)   # crisp corners, soft right fade
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        lum = 130 + 30 * (1 - yy / H)
+        sheen = np.sin((xx + 0.8 * yy) / 26.0) * 0.5 + 0.5  # diagonal sheen bands
+        lum = lum + 95 * sheen ** 3
+        lum = lum * (0.95 + 0.1 * fbm(h32("filewin", "x"), W, H, (48, 24, 8)))
+        rim = 5
+        lum = np.where((yy < rim) | (xx < rim), 230, lum)
+        lum = np.where((yy >= H - rim) | (xx >= W - rim), 70, lum)
+        inset = (((np.abs(yy - 24) < 1) & (xx >= 12)) | ((np.abs(xx - 12) < 1) & (yy >= 24))) & (yy <= H - 12)
+        lum = np.where(inset, 40, lum)
+        _WIN = (np.clip(lum, 0, 255), np.clip(alpha, 0, 255))
+    lum, alpha = _WIN
+    x0 = X0[c]
+    img = np.zeros((d["h"], d["w"], 4), np.float32)
+    img[..., :3] = lum[r * 32:r * 32 + d["h"], x0:x0 + d["w"]][..., None]
+    img[..., 3] = alpha[r * 32:r * 32 + d["h"], x0:x0 + d["w"]]
+    return img
+
+
 def title_logo(path, d):
     """Title logo: our own shield, sword and ZELDA lettering inside the kept silhouette."""
     w, h = d["w"], d["h"]
@@ -640,6 +688,10 @@ def _texture(path, d):
         return kanji_glyph(path, d)
     if "/nes_font_static/" in path:
         return font_glyph(path, d)
+    if "gFileSelWindow" in path:
+        img = file_window(path, d)
+        if img is not None:
+            return img
     if path.endswith("object_fusen/object_fusen_Tex_000E08"):
         return mm_balloon(path, d)
     if path.endswith("gTitleScreenZeldaLogoTex"):
