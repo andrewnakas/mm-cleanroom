@@ -7,7 +7,7 @@ import re
 
 FIX = {
     # item names that need punctuation or differ from the symbol
-    "HerosBow": "Hero's Bow", "GreatFairysSword": "Great Fairy's Sword", "FullMilk": "Milk",
+    "HerosBow": "Hero's Bow", "LightArrow": "Light Arrow (MP4)", "GreatFairysSword": "Great Fairy's Sword", "FullMilk": "Milk",
     "HalfMilk": "Milk (1/2)", "MoonsTear": "Moon's Tear", "FierceDeitysMask": "Fierce Deity's Mask",
     "KafeisMask": "Kafei's Mask", "GarosMask": "Garo's Mask", "RomanisMask": "Romani's Mask",
     "CircusLeadersMask": "Circus Leader's Mask", "PostmansHat": "Postman's Hat",
@@ -92,8 +92,18 @@ def pause_header(path):
     return PAUSE_HEADERS[m.group(1)], int(m.group(2))
 
 
+# text textures outside the prefixed families (full names)
+EXTRA = {
+    "gNotDesignedForSystemErrorTex": "This game is not designed for use on this system",
+    "gSeeInstructionBookletErrorTex": "See the Expansion Pak|instruction booklet",
+    "gExpansionPakNotInstalledErrorTex": "N64 EXPANSION PAK NOT INSTALLED|The N64 Expansion Pak accessory must|be installed in the N64 for this game",
+}
+
+
 def label(path):
     base = path.rsplit("/", 1)[-1]
+    if base in EXTRA:
+        return EXTRA[base].split("|")
     if not base.endswith("Tex"):
         return None
     if re.search(r"(JPN|GER|FRA|SPA|ESP)Tex$", base):
