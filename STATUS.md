@@ -3,10 +3,7 @@
 _Last update: 2026-09-25 ~23:40_
 
 ## For the morning
-- **BLOCKED (needs your OK):** the Emscripten build (ZAPD + 2S2H) was stopped by Claude Code at ~23:40 because the
-  machine ran low on memory (seven sessions; ~4 GB free of 32 GB). Its rule is not to restart a reaped job without
-  being asked. To resume: `bash ports/mm2s2h/build_web.sh ZAPD` then `bash ports/mm2s2h/build_web.sh 2ship`
-  (patches already applied to `D:/n64work/mm/2s2h`; the configure step had passed PNG/zlib/libzip).
+- The build was paused at ~23:40 for low memory; resumed 26 Sep ~01:40 on your go-ahead, with `-j 4` to use less memory.
 - Web build of 2 Ship 2 Harkinian: nothing to look at yet.
 
 ## Decisions (log)

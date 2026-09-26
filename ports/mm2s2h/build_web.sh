@@ -15,5 +15,5 @@ if [ ! -f "$BUILD/build.ninja" ]; then
     -DBUILD_SHARED_LIBS=OFF -DBUILD_CROWD_CONTROL=OFF "-DCMAKE_CXX_FLAGS=-DFMT_CONSTEVAL=" \
     -DGIT_BRANCH=web -DGIT_COMMIT_HASH=clean 2>&1 | tail -25
 fi
-cmake --build "$BUILD" --target "${@:-2ship}" -j 10 2>&1 | grep -E "error|FAILED|warning: unused|Linking|^\[[0-9]+/[0-9]+\] Link" | head -60
+cmake --build "$BUILD" --target "${@:-2ship}" -j ${JOBS:-4} 2>&1 | grep -E "error|FAILED|warning: unused|Linking|^\[[0-9]+/[0-9]+\] Link" | head -60
 echo "build exit: ${PIPESTATUS[0]}"
