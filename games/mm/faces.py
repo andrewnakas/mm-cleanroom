@@ -85,6 +85,10 @@ def state(name):
         st["look"] = [0.0, -0.35]
     if re.search(r"(down|lookdown)", n):
         st["look"] = [0.0, 0.3]
+    if re.search(r"eyes?happy|happyeye|eyesmil|eyejoy", n):
+        st["happy"] = True
+    if re.search(r"(winc|pain|hurt)", n):
+        st["wince"] = True
     if re.search(r"(shock|wide|surpri|surprise|scared|fear)", n):
         st["wide"] = True
         st["irisr"] = 0.36
@@ -118,6 +122,14 @@ def eye_ops(cx, cy, rx, ry, st, c, mirror=False):
     if c.get("brows", True):
         ops.append({"line": [[cx - rx * 1.1, by + tilt], [cx, by - ry * 0.25], [cx + rx * 1.1, by - tilt]],
                     "w": ry * 0.32, "c": brow_c})
+    if st.get("happy"):
+        ops.append({"arc": [cx, cy + ry * 0.35, rx * 0.9, ry * 0.7, 200, 340], "w": ry * 0.24, "c": c["lash"]})
+        return ops
+    if st.get("wince"):
+        s = 1 if mirror else -1
+        ops.append({"line": [[cx - rx * s, cy - ry * 0.5], [cx + rx * 0.7 * s, cy], [cx - rx * s, cy + ry * 0.5]],
+                    "w": ry * 0.25, "c": c["lash"]})
+        return ops
     if st["closed"]:
         ops.append({"arc": [cx, cy - ry * 0.1, rx * 0.95, ry * 0.45, 10, 170], "w": ry * 0.22, "c": c["lash"]})
         return ops
@@ -150,6 +162,52 @@ def mouth_ops(name, c):
             {"arc": [0.5, 0.55, 0.14, 0.08, 20, 160], "w": 0.04, "c": [int(v * 0.8) for v in c["skin"]]}]
 
 
+def _alpha(d):
+    return unpack_alpha2(d["alpha2"], d["w"], d["h"]) if "alpha2" in d else None
+
+
+def styled_eye(path, d, c, st):
+    """Monster eyes: concentric glowing rings (orb) or a soft glowing blob (Deku), our own colours."""
+    from cleanroom.decomp.gen import h32
+    rings = c["rings"]
+    lx, ly = st["look"][0] * 0.25, st["look"][1] * 0.25
+    ops = []
+    n = len(rings)
+    for k, col in enumerate(rings):
+        r = 0.5 * (1 - k / (n + 0.4))
+        if c["style"] == "blob":
+            ops.append({"glow": [0.5 + lx * k / n, 0.5 + ly * k / n, r * 1.25, r * 1.25], "c": col})
+        else:
+            ops.append({"e": [0.5 + lx * k / n, 0.5 + ly * k / n, r, r], "c": col})
+    ops.append({"hl": [0.36 + lx, 0.34 + ly, 0.08], "c": [255, 255, 250]})
+    if st["closed"]:
+        ops = [{"e": [0.5, 0.5, 0.5, 0.5], "c": rings[0]}, {"line": [[0.1, 0.52], [0.9, 0.52]], "w": 0.1, "c": [20, 10, 10]}]
+    return facepaint.render({"base": rings[0], "detail": 0.03, "ops": ops}, d["w"], d["h"], alpha=_alpha(d),
+                            seed=h32("face", path) & 0xFFFF)
+
+
+def almond_eyes(path, d, c, st, pair):
+    """Zora eyes: dark almonds with a bright highlight on pale skin."""
+    from cleanroom.decomp.gen import h32
+    iris, hi = c["iris"], c.get("hi", [230, 250, 250])
+    ops = []
+    centres = [(0.27, True), (0.73, False)] if pair else [(0.5, False)]
+    for cx, mirror in centres:
+        rx = 0.19 if pair else 0.38
+        s = -1 if mirror else 1
+        if st["closed"]:
+            ops.append({"arc": [cx, 0.5, rx, 0.18, 20, 160], "w": 0.07, "c": iris})
+            continue
+        ry = (0.16 if pair else 0.3) * (1 - 0.5 * st["lid"]) * (1.2 if st["wide"] else 1)
+        rot = 22 * (1 if mirror else -1)
+        lx = st["look"][0] * rx * 0.5
+        ops.append({"e": [cx, 0.55, rx, ry], "rot": rot, "c": iris})
+        ops.append({"e": [cx + lx, 0.55 + st["look"][1] * 0.15, rx * 0.34, rx * 0.34], "c": [min(255, v + 25) for v in iris]})
+        ops.append({"hl": [cx + lx - rx * 0.12, 0.5 + st["look"][1] * 0.15, rx * 0.16], "c": hi})
+    return facepaint.render({"base": c["skin"], "detail": 0.04, "ops": ops}, d["w"], d["h"], alpha=_alpha(d),
+                            seed=h32("face", path) & 0xFFFF)
+
+
 def texture(path, d):
     if path.endswith("gLinkChildKeatonMaskEyeBrowTex"):      # the fox mask's arched brows
         ops = [{"arc": [0.5, 0.95, 0.42, 0.6, 200, 340], "w": 0.16, "c": [60, 35, 10]}]
@@ -166,15 +224,20 @@ def texture(path, d):
     # step flat colours off the 5-bit grid values a retail texture would also land on
     c["skin"] = [min(255, int(v) + 10) if i != 2 else max(0, int(v) - 7) for i, v in enumerate(c["skin"])]
     c["sclera"] = [min(v, 236) - (4 if i == 2 else 0) for i, v in enumerate(c["sclera"])]
-    c.setdefault("lip", [int(c["skin"][0] * 0.78), int(c["skin"][1] * 0.55), int(c["skin"][2] * 0.5)])
+    c.setdefault("lip", [int(c["skin"][0] * 0.62), int(c["skin"][1] * 0.38), int(c["skin"][2] * 0.34)])
     name = path.rsplit("/", 1)[1]
     w, h = d["w"], d["h"]
+    style = c.get("style", "human")
+    if style in ("orb", "blob") and kind != "mouth":
+        return styled_eye(path, d, c, state(name))
+    if style == "almond" and kind != "mouth":
+        return almond_eyes(path, d, c, state(name), kind == "eyes2")
     if kind == "mouth":
         ops = mouth_ops(name, c)
     else:
         st = state(name)
         if kind == "eyes2":
-            ops = eye_ops(0.27, 0.6, 0.16, 0.26, st, c, mirror=True) + eye_ops(0.73, 0.6, 0.16, 0.26, st, c)
+            ops = eye_ops(0.28, 0.6, 0.19, 0.30, st, c, mirror=True) + eye_ops(0.72, 0.6, 0.19, 0.30, st, c)
         else:
             ops = eye_ops(0.5, 0.58, 0.33, 0.27, st, c)
     alpha = unpack_alpha2(d["alpha2"], w, h) if "alpha2" in d else None
