@@ -319,6 +319,28 @@ PATCHES = [
      '    }\n'
      '    channelCount = 0;\n'),
 
+    # an empty free list (start 0xFF) made RemoveBankEntry write entry 255, far past the bank array; in
+    # wasm's data layout that clobbered other sfx tables and froze the game (u8 loop over a bad count)
+    ("mm/src/audio/sfx.c",
+     '    gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].prev = entryIndex;\n',
+     '    if (sSfxBankFreeListStart[bankId] != 0xFF) {\n'
+     '        gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].prev = entryIndex;\n'
+     '    }\n'),
+    ("mm/src/audio/sfx.c",
+     '    if ((gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].next != 0xFF) && (index != 0)) {\n',
+     '    if ((sSfxBankFreeListStart[bankId] != 0xFF) && (gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].next != 0xFF) &&\n'
+     '        (index != 0)) {\n'),
+    ("mm/src/audio/sfx.c",
+     '        sSfxBankFreeListStart[bankId] = gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].next;\n'
+     '        gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].prev = 0xFF;\n',
+     '        sSfxBankFreeListStart[bankId] = gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].next;\n'
+     '        if (sSfxBankFreeListStart[bankId] != 0xFF) {\n'
+     '            gSfxBanks[bankId][sSfxBankFreeListStart[bankId]].prev = 0xFF;\n'
+     '        }\n'),
+    ("mm/src/audio/sfx.c",
+     'void AudioSfx_RemoveBankEntry(u8 bankId, u8 entryIndex) {\n    SfxBankEntry* entry = &gSfxBanks[bankId][entryIndex];\n    u8 i;\n',
+     'void AudioSfx_RemoveBankEntry(u8 bankId, u8 entryIndex) {\n    SfxBankEntry* entry = &gSfxBanks[bankId][entryIndex];\n    s32 i;\n'),
+
     # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
     ("mm/src/code/padmgr.c",
      'void PadMgr_ThreadEntry() {\n',
