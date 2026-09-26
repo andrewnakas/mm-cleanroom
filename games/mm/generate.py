@@ -138,6 +138,12 @@ def pal_cell_means(d):
     return g[ys][:, xs].reshape(-1, 4)
 
 
+RESEED = set()     # textures the taint scan flagged: new seed + wider dither (games/mm/taint_reseed.json)
+_rs = os.path.join(os.path.dirname(__file__), "taint_reseed.json")
+if os.path.exists(_rs):
+    RESEED = set(json.load(open(_rs)))
+
+
 def gen_textures(T, P, kept, hook_stats):
     out = {}
     rgba = {}
@@ -158,7 +164,7 @@ def gen_textures(T, P, kept, hook_stats):
                 f[..., :3] *= (1 + 0.10 * fbm(h32("paint", path), img.shape[1], img.shape[0], (16, 8, 4, 2)))[..., None]
                 img = np.clip(f, 0, 255).astype(np.uint8)
         # per-texel dither: smooth regions must not quantise to the same texels as retail
-        rng = np.random.default_rng(h32("tdither", path))
+        rng = np.random.default_rng(h32("tdither2" if path in RESEED else "tdither", path))
         img = img.astype(np.int16)
         face = bool(re.search(r"(Eyes?|Mouth|Pupil|Iris)", path.rsplit("/", 1)[1]))   # flat skin like retail: full dither
         if face and path in hooked:
@@ -167,6 +173,8 @@ def gen_textures(T, P, kept, hook_stats):
             amp = 3 if any(k in path for k in SKY) else (8 if (path in hooked or ROOMBG.search(path)) else 13)   # skies and our drawings stay clean
         # material-like grain: fine fractal noise (spatially smooth over ~2 texels) plus a little
         # per-texel jitter, instead of white static; same job (no long runs equal to retail texels)
+        if path in RESEED:
+            amp += 8
         img[..., :3] += rng.integers(-amp, amp + 1, img.shape[:2] + (3,), dtype=np.int16)
         rgba[path] = np.clip(img, 0, 255).astype(np.uint8)
     # palettes: primary users define them
@@ -218,7 +226,9 @@ def gen_textures(T, P, kept, hook_stats):
                     amp = 14
                 else:
                     amp = None
-                idx = index_image(rgba[path], clean_pal[d["pal"][0]], h32("idx", path), amp=amp,
+                if path in RESEED:
+                    amp = (amp or 30) + 12
+                idx = index_image(rgba[path], clean_pal[d["pal"][0]], h32("idx2" if path in RESEED else "idx", path), amp=amp,
                                   ordered=(path in hooked and ROOMBG.search(path) is not None)) + d.get("idx_base", 0)
             else:                                     # no known palette: grey grid is an index map
                 idx = np.round(rgba[path][..., 0].astype(np.float32) * ((16 if t == 3 else 256) - 1) / 255).astype(np.uint8)
