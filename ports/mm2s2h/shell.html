@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Majora's Mask Clean Room</title>
+<style>
+  :root { --bg: #0e0b14; --fg: #ece6f2; --dim: #a49cb0; --accent: #c9a4ff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; background: #000;
+    width: min(100vw, calc(100vh * 4 / 3)); height: min(100vh, calc(100vw * 3 / 4)); }
+  #start { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 14px;
+    align-items: center; justify-content: center; background: rgba(12, 9, 18, .94); cursor: pointer;
+    text-align: center; padding: 16px; }
+  #start h1 { margin: 0; font-size: 28px; letter-spacing: .02em; }
+  #start .go { background: var(--accent); color: #1b0f2c; font-weight: 700; border-radius: 999px;
+    padding: 10px 26px; font-size: 16px; }
+  #start p { margin: 0; color: var(--dim); max-width: 600px; }
+  kbd { border: 1px solid #555; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px;
+    font: 12px ui-monospace, monospace; color: var(--fg); }
+  #status { position: fixed; left: 12px; bottom: 10px; color: var(--dim); font-size: 12px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas></div>
+<div id="start">
+  <h1>The Legend of Zelda: Majora's Mask &mdash; Clean Room</h1>
+  <div class="go">Click to play</div>
+  <p>2 Ship 2 Harkinian (the Majora's Mask PC port) built for the web. Every asset the game would take from the ROM
+     was regenerated: textures, fonts, faces, icons, instruments and voices. No ROM needed.</p>
+  <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> stick &middot; <kbd>X</kbd> A &middot; <kbd>C</kbd> B &middot;
+     <kbd>Z</kbd> Z &middot; <kbd>Space</kbd> Start &middot; arrows C buttons &middot; <kbd>Q</kbd> L? &middot; <kbd>E</kbd> R?
+     &middot; <kbd>Esc</kbd> port menu &middot; gamepads work</p>
+</div>
+<div id="status">Loading...</div>
+<template id="emscript">{{{ SCRIPT }}}</template>
+<script>
+var Q = new URLSearchParams(location.search);
+var statusEl = document.getElementById('status');
+var ARCHIVES = (window.MM_ARCHIVES || ['2ship.o2r', 'mm.o2r']);
+var VER = window.MM_VER || '';
+function setStatus(t) { statusEl.textContent = t || ''; }
+
+var Module = {
+  canvas: document.getElementById('canvas'),
+  print: function (t) { console.log(t); },
+  printErr: function (t) { console.log(t); },
+  setStatus: function (t) { if (t) setStatus(t); },
+  preRun: [function () {
+    // saves + config persist in IndexedDB
+    try { FS.mkdir('/saves'); } catch (e) {}
+    FS.mount(IDBFS, {}, '/saves');
+    addRunDependency('idbfs');
+    FS.syncfs(true, function (err) {
+      if (err) console.log('[web] IDBFS load failed ' + err);
+      removeRunDependency('idbfs');
+    });
+    // game archives from the site itself
+    ARCHIVES.forEach(function (name) {
+      addRunDependency('fetch ' + name);
+      fetch(name + (VER ? '?v=' + VER : '')).then(function (r) {
+        if (!r.ok) throw new Error(name + ' HTTP ' + r.status);
+        var total = +r.headers.get('content-length') || 0, got = 0, parts = [];
+        var rd = r.body.getReader();
+        function pump() {
+          return rd.read().then(function (x) {
+            if (x.done) return;
+            parts.push(x.value); got += x.value.length;
+            setStatus('Loading ' + name + ' ' + (total ? Math.round(100 * got / total) + '%' : (got >> 20) + ' MB'));
+            return pump();
+          });
+        }
+        return pump().then(function () {
+          var buf = new Uint8Array(got), o = 0;
+          parts.forEach(function (p) { buf.set(p, o); o += p.length; });
+          FS.writeFile('/' + name, buf);
+          removeRunDependency('fetch ' + name);
+        });
+      }).catch(function (e) { setStatus('Download failed (' + e.message + '), retrying...'); setTimeout(function () { location.reload(); }, 4000); });
+    });
+  }],
+  onRuntimeInitialized: function () { setStatus(''); }
+};
+function persist() { try { FS.syncfs(false, function () {}); } catch (e) {} }
+setInterval(persist, 5000);
+addEventListener('pagehide', persist);
+document.addEventListener('visibilitychange', function () { if (document.hidden) persist(); });
+
+// Dev hooks (headless tests): ?dump=5,10 logs canvas PNGs at those seconds;
+// ?keys=4:Space:0.2,9:KeyX:0.1 presses a key code at t seconds for d seconds;
+// ?audiolog=1 logs output loudness; ?hb=1 heartbeat with game tick count.
+var KEYS = { Space: [' ', 32], Enter: ['Enter', 13], Escape: ['Escape', 27], ArrowUp: ['ArrowUp', 38], ArrowDown: ['ArrowDown', 40],
+  ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], ShiftLeft: ['Shift', 16], ControlLeft: ['Control', 17], Tab: ['Tab', 9] };
+function keyInfo(code) {
+  if (KEYS[code]) return KEYS[code];
+  if (/^Key[A-Z]$/.test(code)) return [code[3].toLowerCase(), code.charCodeAt(3)];
+  if (/^Digit[0-9]$/.test(code)) return [code[5], code.charCodeAt(5)];
+  return [code, 0];
+}
+function sendKey(type, code) {
+  var k = keyInfo(code);
+  var ev = new KeyboardEvent(type, { code: code, key: k[0], keyCode: k[1], which: k[1], bubbles: true, cancelable: true });
+  (document.activeElement || window).dispatchEvent(ev);
+}
+window.devKey = sendKey;
+function devHooks(t0) {
+  if (Q.has('dump')) {
+    var gc = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (t, o) { o = o || {}; o.preserveDrawingBuffer = true; return gc.call(this, t, o); };
+  }
+  if (Q.has('audiolog')) {
+    var csp = AudioContext.prototype.createScriptProcessor;
+    AudioContext.prototype.createScriptProcessor = function () {
+      var node = csp.apply(this, arguments), acc = 0, n = 0, last = performance.now();
+      var desc = Object.getOwnPropertyDescriptor(ScriptProcessorNode.prototype, 'onaudioprocess');
+      Object.defineProperty(node, 'onaudioprocess', {
+        set: function (fn) {
+          desc.set.call(node, function (ev) {
+            fn(ev);
+            var d = ev.outputBuffer.getChannelData(0);
+            for (var i = 0; i < d.length; i++) { acc += d[i] * d[i]; }
+            n += d.length;
+            var t = performance.now();
+            if (t - last > 250) {
+              console.log('AUDIO ' + Math.round(t - t0) + ' ' + (10 * Math.log10(acc / Math.max(n, 1) + 1e-12)).toFixed(1));
+              acc = 0; n = 0; last = t;
+            }
+          });
+        }
+      });
+      return node;
+    };
+  }
+  if (Q.has('hb')) setInterval(function () {
+    var ticks = (typeof HEAP32 !== 'undefined' && Module._gWebTicksPtr) ? HEAP32[Module._gWebTicksPtr >> 2] : '';
+    console.log('hb ' + Math.round(performance.now() - t0) + ' ' + ticks);
+  }, 1000);
+  var dumps = (Q.get('dump') || '').split(',').filter(Boolean).map(Number);
+  dumps.forEach(function (s, k) {
+    setTimeout(function () {
+      var done = false;
+      function dump() {
+        if (done) return; done = true;
+        var url = Module.canvas.toDataURL('image/png');
+        for (var i = 0; i < url.length; i += 4000) console.log('PW64PNG:' + k + ':' + url.slice(i, i + 4000));
+        console.log('PW64PNG:' + k + ':END');
+      }
+      requestAnimationFrame(dump);
+      setTimeout(dump, 300);
+    }, s * 1000);
+  });
+  (Q.get('keys') || '').split(',').filter(Boolean).forEach(function (e) {
+    var p = e.split(':'), t = +p[0], code = p[1], d = +(p[2] || 0.15);
+    setTimeout(function () { sendKey('keydown', code); }, t * 1000);
+    setTimeout(function () { sendKey('keyup', code); }, (t + d) * 1000);
+  });
+}
+
+function start() {
+  var st = document.getElementById('start');
+  if (!st) return;
+  st.remove();
+  var s = document.createElement('script');
+  s.src = '2ship.js';
+  s.async = true;
+  document.body.appendChild(s);
+  devHooks(performance.now());
+  Module.canvas.focus();
+}
+document.getElementById('start').addEventListener('click', start, { once: true });
+if (Q.has('autostart') || Q.has('dump')) start();
+</script>
+</body>
+</html>
