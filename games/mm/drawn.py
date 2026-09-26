@@ -41,32 +41,44 @@ def _down(m, w, h):
     return m.reshape(h, SS, w, SS).mean((1, 3))
 
 
-def text_mask(lines, w, h, which="sans", align="center", size=None, pad_x=1):
-    """Coverage (h, w) of lines of text, auto-sized to fit, supersampled."""
+def text_mask(lines, w, h, which="sans", align="center", size=None, pad_x=1, squeeze=0.62):
+    """Coverage (h, w) of lines of text, auto-sized to fit, supersampled.
+    Text that is too wide is first squeezed horizontally (down to `squeeze`), then shrunk."""
     W, H = w * SS, h * SS
     n = len(lines)
     lh = H / n
     px = size * SS if size else int(lh * 0.95)
+    avail = W - 2 * pad_x * SS
+    sq = 1.0
     while px > 4:
         f = font(which, px)
         widths = [f.getbbox(t)[2] - f.getbbox(t)[0] if t else 0 for t in lines]
         asc, desc = f.getmetrics()
-        if max(widths) <= W - 2 * pad_x * SS and (asc * 0.8 + desc * 0.35) <= lh * 1.02:
-            break
+        if (asc * 0.8 + desc * 0.35) <= lh * 1.02:
+            need = max(widths) / max(avail, 1)
+            if need <= 1:
+                break
+            if need <= 1 / squeeze:
+                sq = 1 / need
+                break
         px -= 1
     f = font(which, px)
-    img = Image.new("L", (W, H), 0)
+    WW = int(W / sq)
+    img = Image.new("L", (WW, H), 0)
     d = ImageDraw.Draw(img)
     cap = f.getbbox("H")
     ch = cap[3] - cap[1]
+    pad = pad_x * SS / sq
     for i, t in enumerate(lines):
         if not t:
             continue
         bb = f.getbbox(t)
         tw = bb[2] - bb[0]
-        x = {"center": (W - tw) / 2, "left": pad_x * SS, "right": W - tw - pad_x * SS}[align] - bb[0]
+        x = {"center": (WW - tw) / 2, "left": pad, "right": WW - tw - pad}[align] - bb[0]
         y = i * lh + (lh - ch) / 2 - cap[1]
         d.text((x, y), t, font=f, fill=255)
+    if WW != W:
+        img = img.resize((W, H), Image.LANCZOS)
     return _down(np.asarray(img, np.float32) / 255.0, w, h)
 
 
@@ -210,16 +222,33 @@ def kanji_glyph(path, d):
 
 # ------------------------------------------------------------ labels
 
+def daytelop(path, d):
+    """"Dawn of / The First Day": one phrase across the Left and Right textures."""
+    m = re.search(r"gDaytelop(First|Second|Final|New)Day(Left|Right)NESTex$", path)
+    if not m:
+        return None
+    day = {"First": "The First Day", "Second": "The Second Day", "Final": "The Final Day", "New": "A New Day"}[m.group(1)]
+    w, h = d["w"], d["h"]
+    W = 2 * w
+    top = text_mask(["Dawn of"], W, int(h * 0.38), "serif", size=int(h * 0.3))
+    bot = text_mask([day], W, h - int(h * 0.38), "serif")
+    cov = np.concatenate([top, bot], 0)
+    img = outlined(cov, fill=(255, 255, 255), edge=(20, 10, 30), r=1)
+    return img[:, :w] if m.group(2) == "Left" else img[:, w:]
+
+
 def label_tex(path, d, lines):
     w, h = d["w"], d["h"]
     base = path.rsplit("/", 1)[1]
     align = "left" if ("FileSel" in base and "Button" not in base and len(lines[0]) > 8) else "center"
     if "TitleCard" in base and len(lines) == 2:          # boss: small subtitle, big name
         top = text_mask([lines[0]], w, h // 3, "sans")
-        bot = text_mask([lines[1]], w, h - h // 3, "sansx")
+        bot = text_mask([lines[1].upper()], w, h - h // 3, "sansx")
         m = np.concatenate([top, bot], 0)
+    elif "TitleCard" in base:
+        m = text_mask([lines[0].upper()], w, h, "sansx", squeeze=0.5)
     elif "DoAction" in base:                             # button labels sit on round buttons: keep them compact
-        m = text_mask(lines, w, h, "sans", align="center", pad_x=8, size=9)
+        m = text_mask(lines, w, h, "sansx", align="center", pad_x=2, squeeze=0.5)
     else:
         m = text_mask(lines, w, h, "sansx" if h >= 16 else "sans", align=align)
     if "Button" in base and d["type"] == 9:              # file select buttons: grey bevel, dark text
@@ -509,6 +538,9 @@ def texture(path, d):
         if img is not None:
             return img
         return stone(path, d)
+    img = daytelop(path, d)
+    if img is not None:
+        return img
     lines = labels.label(path)
     if lines:
         return label_tex(path, d, lines)

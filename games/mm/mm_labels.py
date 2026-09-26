@@ -53,7 +53,7 @@ FIX = {
     "ZoraHall": "Zora Hall", "IkanaGraveyard": "Ikana Graveyard", "IkanaCanyon": "Ikana Canyon",
     "GreatBayCoast": "Great Bay Coast", "ZoraCape": "Zora Cape",
     # day telop / clock / notebook
-    "1st": "1st Day", "2nd": "2nd Day", "Final": "Final Day", "Day1st": "1st Day", "Day2nd": "2nd Day", "DayFinal": "Final Day", "TimeOfDay": "Time",
+    "1st": "1st", "2nd": "2nd", "Final": "Final", "Day1st": "1st Day", "Day2nd": "2nd Day", "DayFinal": "Final Day", "TimeOfDay": "Time",
     "FirstDayLeft": "Dawn of|The First Day", "SecondDayLeft": "Dawn of|The Second Day",
     "FinalDayLeft": "Dawn of|The Final Day", "NewDayLeft": "Dawn of|A New Day",
     "72Hours": "-72 Hours Remain-", "48Hours": "-48 Hours Remain-", "24Hours": "-24 Hours Remain-",

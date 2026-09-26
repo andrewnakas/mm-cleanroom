@@ -16,18 +16,29 @@ from games.mm.rom_tex import textures, files, decode
 def main(argv):
     rom = open(argv[1], "rb").read()
     xml, out = argv[2], argv[3]
-    rx = re.compile(argv[4] if len(argv) > 4 else ".")
+    rx = re.compile(argv[4] if len(argv) > 4 and not argv[4].startswith("--") else ".")
     fs = files(rom, xml.rstrip("/\\") + "/../../extractor/filelists/mm.txt")
     chars = faces.briefs()["chars"]
+    use_drawn = "--drawn" in argv
+    if use_drawn:
+        from games.mm import drawn
     tiles = []
     for f, n, fmt, w, h, o, t in textures(xml):
-        if f not in chars or not rx.search(f) or "TLUT" in n or not re.search(r"(Eye|Mouth)", n):
+        if use_drawn:
+            if not rx.search(f + "/" + n) or "TLUT" in n:
+                continue
+        elif f not in chars or not rx.search(f) or "TLUT" in n or not re.search(r"(Eye|Mouth)", n):
             continue
-        rgba = decode(fs[f], fmt, w, h, o, t)
+        try:
+            rgba = decode(fs[f], fmt, w, h, o, t)
+        except (ValueError, KeyError):
+            continue
         d = {"w": w, "h": h, "grid": grid(rgba, 4)}
         if (rgba[..., 3] < 250).any():
             d["alpha2"] = alpha2(rgba[..., 3])
-        img = faces.texture(f"objects/{f}/{n}", d)
+        fmt_type = {"rgba32": 1, "rgba16": 2, "ci4": 3, "ci8": 4, "i4": 5, "i8": 6, "ia4": 7, "ia8": 8, "ia16": 9}.get(fmt, 0)
+        d["type"] = fmt_type
+        img = (drawn.texture(f"x/{f}/{n}", d) if use_drawn else faces.texture(f"objects/{f}/{n}", d))
         if img is None:
             continue
         pair = []
