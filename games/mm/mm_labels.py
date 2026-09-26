@@ -33,23 +33,22 @@ FIX = {
     "AreYouSureCopy": "Are you sure?", "AreYouSureErase": "Are you sure?",
     "CheckBrightness": "Adjust the brightness", "CopyButton": "Copy", "EraseButton": "Erase",
     "CopyToWhichFile": "Copy to which file?", "CopyWhichFile": "Copy which file?",
-    "DecideCancel": "Decide|Cancel", "DecideSave": "Decide|Save", "ENDButton": "END",
+    "DecideCancel": "A-Decide • B-Cancel", "DecideSave": "A-Decide • B-Save", "ENDButton": "END",
     "EraseWhichFile": "Erase which file?", "File1Button": "File 1", "File2Button": "File 2",
     "File3Button": "File 3", "FileCopied": "File copied.", "FileEmpty": "This file is empty.",
-    "FileErased": "File erased.", "FileInUse": "This file is in use.", "FinalDay": "Final Day",
-    "FirstDay": "First Day", "SecondDay": "Second Day", "Headset": "Headset", "Hold": "Hold",
-    "MASKS": "MASKS", "Mono": "Mono", "Name": "Name", "NoEmptyFile": "There is no empty file.",
+    "FileErased": "File erased.", "FileInUse": "This file is in use.", "FinalDay": "FINAL|DAY",
+    "FirstDay": "FIRST|DAY", "SecondDay": "SECOND|DAY", "Headset": "Headset", "Hold": "Hold",
+    "MASKS": "MASKS", "Mono": "Mono", "Name": "Name?", "NoEmptyFile": "There is no empty file.",
     "NoFileToCopy": "No file to copy.", "NoFileToErase": "No file to erase.", "OpenThisFile": "Open this file?",
     "OptionsButton": "Options", "Options": "Options", "PleaseSelectAFile": "Please select a file.",
     "PleaseWait": "Please wait...", "QuitButton": "Quit", "Sound": "Sound", "Stereo": "Stereo",
     "Surround": "Surround", "Switch": "Switch", "Targeting": "Z Targeting", "YesButton": "Yes",
     # pause screen
-    "Map10": "Map", "Masks10": "Masks", "QuestStatus00": "Quest", "QuestStatus10": "Status",
-    "SelectItem00": "Select", "SelectItem10": "Item", "ToDecide": "to Decide", "ToEquip": "to Equip",
+     "ToDecide": "to Decide", "ToEquip": "to Equip",
     "ToMap": "to Map", "ToMasks": "to Masks", "ToPlayMelody": "to Play Melody",
     "ToQuestStatus": "to Quest Status", "ToSelectItem": "to Select Item", "ToViewNotebook": "to View Notebook",
-    "GreatBayTitle": "Great Bay", "SnowheadTitle": "Snowhead", "StoneTowerTitle": "Stone Tower",
-    "WoodfallTitle": "Woodfall",
+    "GreatBayTitle": "Great Bay Temple", "SnowheadTitle": "Snowhead Temple", "StoneTowerTitle": "Stone Tower Temple",
+    "WoodfallTitle": "Woodfall Temple",
     # map points
     "ZoraHall": "Zora Hall", "IkanaGraveyard": "Ikana Graveyard", "IkanaCanyon": "Ikana Canyon",
     "GreatBayCoast": "Great Bay Coast", "ZoraCape": "Zora Cape",
@@ -81,6 +80,18 @@ def split_camel(s):
     return " ".join(w.lower() if i and w in small else w for i, w in enumerate(words))
 
 
+# pause-screen headers: one phrase drawn across three stone tiles (col 0, 1, 2)
+PAUSE_HEADERS = {"SelectItem": "SELECT ITEM", "QuestStatus": "QUEST STATUS", "Map": "MAP", "Masks": "MASKS"}
+
+
+def pause_header(path):
+    """-> (phrase, column) for gPause<Page><col><row>ENGTex header tiles, else None."""
+    m = re.search(r"gPause(SelectItem|QuestStatus|Map|Masks)(\d)(\d)ENGTex$", path)
+    if not m:
+        return None
+    return PAUSE_HEADERS[m.group(1)], int(m.group(2))
+
+
 def label(path):
     base = path.rsplit("/", 1)[-1]
     if not base.endswith("Tex"):
@@ -89,6 +100,8 @@ def label(path):
         return None                              # other-language slots: not shown on US
     for pre in PREFIXES:
         if base.startswith(pre):
+            if pause_header(base):
+                return None                      # drawn by pause_header()
             if pre in ("gPause", "gFileSel", "gTatl", "gMapPoint", "gDoAction", "gItemName") and not base.endswith("ENGTex"):
                 return None                      # panel pieces / non-text slots
             core = base[len(pre):-3]
