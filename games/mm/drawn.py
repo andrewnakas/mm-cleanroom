@@ -348,6 +348,77 @@ def pause_header(path, d):
 
 # ------------------------------------------------------------ dispatch
 
+def _alpha_or_full(d):
+    return unpack_alpha2(d["alpha2"], d["w"], d["h"]).astype(np.float32) if "alpha2" in d else np.full((d["h"], d["w"]), 255.0, np.float32)
+
+
+def _bevel(a):
+    """Light from the upper left on the kept silhouette: (+) lit edge, (-) shadow edge."""
+    m = (a > 127).astype(np.float32)
+    up = np.clip(m - np.roll(m, 1, 0), 0, 1) + np.clip(m - np.roll(m, 1, 1), 0, 1)
+    up2 = np.clip(m - np.roll(m, 2, 0), 0, 1) + np.clip(m - np.roll(m, 2, 1), 0, 1)
+    dn = np.clip(m - np.roll(m, -1, 0), 0, 1) + np.clip(m - np.roll(m, -1, 1), 0, 1)
+    dn2 = np.clip(m - np.roll(m, -2, 0), 0, 1) + np.clip(m - np.roll(m, -2, 1), 0, 1)
+    return np.clip(up + 0.5 * up2, 0, 1) - np.clip(dn + 0.5 * dn2, 0, 1)
+
+
+def mm_zelda_logo(path, d):
+    """ZELDA lettering: the kept letter silhouette filled with our own brushed violet metal."""
+    from cleanroom.decomp.gen import h32
+    w, h = d["w"], d["h"]
+    a = _alpha_or_full(d)
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    t = yy / h
+    base = np.stack([150 + 70 * (1 - t), 95 + 50 * (1 - t), 200 + 40 * (1 - t)], -1)
+    streak = fbm(h32("zelda", path), w, h, (w / 3, 6, 2))[..., None]
+    base = base * (0.9 + 0.2 * streak) + 30 * np.clip(np.sin(xx / w * 9 + yy / h * 3), 0, 1)[..., None] ** 8
+    bev = _bevel(a)[..., None]
+    rgb = base * (1 + 0.45 * np.clip(bev, 0, 1)) * (1 - 0.55 * np.clip(-bev, 0, 1))
+    out = np.zeros((h, w, 4), np.float32)
+    out[..., :3] = np.clip(rgb, 0, 255)
+    out[..., 3] = a
+    return out
+
+
+def mm_title_mask(path, d):
+    """Majora's Mask picture: heart-shaped face, spikes, two round eyes, painted inside the kept silhouette."""
+    from cleanroom.gfx import facepaint
+    from cleanroom.decomp.gen import h32
+    w, h = d["w"], d["h"]
+    a = _alpha_or_full(d)
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    u, v = xx / w, yy / h
+    # heart body: two lobes and a point, our own proportions
+    body = ((((u - 0.36) / 0.2) ** 2 + ((v - 0.42) / 0.2) ** 2) <= 1) | ((((u - 0.64) / 0.2) ** 2 + ((v - 0.42) / 0.2) ** 2) <= 1)
+    body |= (v > 0.42) & (np.abs(u - 0.5) < 0.4 * (1 - (v - 0.42) / 0.45))
+    spikes = np.stack([220 - 60 * v, 200 - 30 * v, 80 + 20 * v], -1)            # yellow-green horns
+    face = np.stack([70 + 40 * (1 - v), 45 + 20 * (1 - v), 120 + 60 * (1 - v)], -1)   # dusk violet
+    rgb = np.where(body[..., None], face, spikes)
+    g = fbm(h32("mask", path), w, h, (16, 8, 3))[..., None]
+    rgb = rgb * (0.88 + 0.22 * g)
+    # carved band across the brow and a lower face split
+    band = body & (np.abs(v - 0.3 - 0.08 * np.abs(u - 0.5)) < 0.03)
+    rgb[band] = [150, 110, 60]
+    split = body & (np.abs(u - 0.5) < 0.012) & (v > 0.55)
+    rgb[split] = [30, 20, 40]
+    out = np.zeros((h, w, 4), np.float32)
+    out[..., :3] = rgb
+    out[..., 3] = a
+    ops = []
+    for cx in (0.35, 0.65):
+        ops += [{"e": [cx, 0.47, 0.115, 0.13], "c": [200, 50, 20]}, {"e": [cx, 0.47, 0.085, 0.1], "c": [250, 130, 30]},
+                {"e": [cx, 0.47, 0.05, 0.06], "c": [250, 210, 70]}, {"e": [cx + 0.01, 0.47, 0.025, 0.03], "c": [120, 160, 30]},
+                {"hl": [cx - 0.04, 0.42, 0.018], "c": [255, 250, 230]}]
+    eyes = facepaint.render({"base": [0, 0, 0], "ops": ops}, w, h)
+    em = np.zeros((h, w), bool)
+    for cx in (0.35, 0.65):
+        em |= (((u - cx) / 0.115) ** 2 + ((v - 0.47) / 0.13) ** 2) <= 1
+    out[em, :3] = eyes[em, :3]
+    bev = _bevel(a)[..., None]
+    out[..., :3] = np.clip(out[..., :3] * (1 + 0.3 * np.clip(bev, 0, 1)) * (1 - 0.5 * np.clip(-bev, 0, 1)), 0, 255)
+    return out
+
+
 def title_logo(path, d):
     """Title logo: our own shield, sword and ZELDA lettering inside the kept silhouette."""
     w, h = d["w"], d["h"]
@@ -531,6 +602,22 @@ def texture(path, d):
         return kanji_glyph(path, d)
     if "/nes_font_static/" in path:
         return font_glyph(path, d)
+    if path.endswith("gTitleScreenZeldaLogoTex"):
+        return mm_zelda_logo(path, d)
+    if path.endswith("gTitleScreenMajorasMaskTex"):
+        return mm_title_mask(path, d)
+    if path.endswith("gTitleScreenMajorasMaskSubtitleTex") or path.endswith("gTitleScreenMajorasMaskSubtitleMaskTex"):
+        return grey_img(np.clip(text_mask(["MAJORA'S MASK ™"], d["w"], d["h"], "sans") * 1.3, 0, 1))
+    if path.endswith("gTitleScreenCopyright2000NintendoTex"):
+        return grey_img(text_mask(["© 2000 Nintendo"], d["w"], d["h"], "sansx"))
+    if path.endswith("gNintendo64LogoTextTex"):
+        w, h = d["w"], d["h"]
+        m = np.maximum(text_mask(["NINTENDO"], int(w * 0.84), h, "sansx"),
+                       0)
+        m = np.concatenate([m, np.zeros((h, w - m.shape[1]), np.float32)], 1)
+        m64 = text_mask(["64"], w - int(w * 0.84), h // 2, "sansx")
+        m[: h // 2, int(w * 0.84):] = np.maximum(m[: h // 2, int(w * 0.84):], m64)
+        return grey_img(m)
     if path.endswith("nintendo_rogo_static_Tex_000000"):       # the wordmark under the N64 logo
         return grey_img(text_mask(["Nintendo"], d["w"], d["h"], "sansx", size=26))
     if "gPause" in path and re.search(r"gPause(SelectItem|QuestStatus|Masks|Map|Save|GameOver)\d\d", path):
