@@ -104,6 +104,8 @@ function keyInfo(code) {
 function sendKey(type, code) {
   var k = keyInfo(code);
   var ev = new KeyboardEvent(type, { code: code, key: k[0], keyCode: k[1], which: k[1], bubbles: true, cancelable: true });
+  Object.defineProperty(ev, 'keyCode', { get: function () { return k[1]; } });   // the constructor ignores keyCode
+  Object.defineProperty(ev, 'which', { get: function () { return k[1]; } });
   (document.activeElement || window).dispatchEvent(ev);
 }
 window.devKey = sendKey;
@@ -134,6 +136,13 @@ function devHooks(t0) {
       });
       return node;
     };
+  }
+  if (Q.has('warp')) {   // ?warp=0xD800&warpat=15: start a fresh game at that entrance
+    setTimeout(function () {
+      var r = Module._web_warp ? Module._web_warp(parseInt(Q.get('warp'))) : -9;
+      console.log('warp ' + Q.get('warp') + ' -> ' + r);
+    }, (+(Q.get('warpat') || 15)) * 1000);
+    setInterval(function () { if (Module._web_scene) console.log('scene ' + Module._web_scene()); }, 5000);
   }
   if (Q.has('hb')) setInterval(function () {
     var ticks = (typeof HEAP32 !== 'undefined' && Module._gWebTicksPtr) ? HEAP32[Module._gWebTicksPtr >> 2] : '';

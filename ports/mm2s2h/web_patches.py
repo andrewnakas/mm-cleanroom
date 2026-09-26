@@ -255,6 +255,56 @@ PATCHES = [
      '#endif\n'
      '}\n'),
 
+    # dev/test hook: start a fresh game at an entrance (same steps as 2S2H's BootToWarpPoint)
+    ("mm/2s2h/DeveloperTools/WarpPoint.cpp",
+     'static RegisterShipInitFunc initFunc(RegisterWarpPoints, { CVAR_BOOT_TO_FILE_SELECT_NAME });\n',
+     'static RegisterShipInitFunc initFunc(RegisterWarpPoints, { CVAR_BOOT_TO_FILE_SELECT_NAME });\n'
+     '#ifdef __EMSCRIPTEN__\n'
+     '#include <emscripten.h>\n'
+     'extern "C" EMSCRIPTEN_KEEPALIVE int web_warp(int entrance) {\n'
+     '    if (gGameState == NULL) {\n'
+     '        return -1;\n'
+     '    }\n'
+     '    // gPlayState can be stale after the title demo: only a live, normal-mode play state transitions\n'
+     '    if (gPlayState != NULL && (GameState*)gPlayState == gGameState && gSaveContext.gameMode == GAMEMODE_NORMAL) {\n'
+     '        gPlayState->nextEntrance = entrance;\n'
+     '        gPlayState->transitionTrigger = TRANS_TRIGGER_START;\n'
+     '        gPlayState->transitionType = TRANS_TYPE_INSTANT;\n'
+     '        return 1;\n'
+     '    }\n'
+     '    gSaveContext.gameMode = GAMEMODE_NORMAL;\n'
+     '    Sram_InitNewSave();\n'
+     '    gSaveContext.sceneLayer = 0;\n'
+     '    gSaveContext.save.time = CLOCK_TIME(8, 0);\n'
+     '    gSaveContext.save.day = 1;\n'
+     '    gSaveContext.save.cutsceneIndex = 0;\n'
+     '    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;\n'
+     '    gSaveContext.save.linkAge = 0;\n'
+     '    gSaveContext.fileNum = 0xFE;\n'
+     '    MapSelect_LoadGame((MapSelectState*)gGameState, entrance, 0);\n'
+     '    gSaveContext.fileNum = 0xFF;\n'
+     '    GameInteractor_ExecuteOnSaveInit(gSaveContext.fileNum);\n'
+     '    GameInteractor_ExecuteOnSaveLoad(gSaveContext.fileNum);\n'
+     '    gSaveContext.save.entrance = entrance;\n'
+     '    return 0;\n'
+     '}\n'
+     '// which game state runs (index in gGameStateOverlayTable), for scripted tests\n'
+     'extern "C" EMSCRIPTEN_KEEPALIVE int web_gamestate(void) {\n'
+     '    if (gGameState == NULL) {\n'
+     '        return -1;\n'
+     '    }\n'
+     '    for (int i = 0; i < GAMESTATE_ID_MAX; i++) {\n'
+     '        if (gGameStateOverlayTable[i].destroy == gGameState->destroy) {\n'
+     '            return i;\n'
+     '        }\n'
+     '    }\n'
+     '    return -2;\n'
+     '}\n'
+     'extern "C" EMSCRIPTEN_KEEPALIVE int web_scene(void) {\n'
+     '    return (gPlayState != NULL && (GameState*)gPlayState == gGameState) ? gPlayState->sceneId : -1;\n'
+     '}\n'
+     '#endif\n'),
+
     # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
     ("mm/src/code/padmgr.c",
      'void PadMgr_ThreadEntry() {\n',

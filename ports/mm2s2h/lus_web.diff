@@ -1,0 +1,361 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 08cc791..0dcf400 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -64,6 +64,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+     include(cmake/dependencies/linux.cmake)
+ endif()
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR EMSCRIPTEN)
++    include(cmake/dependencies/emscripten.cmake OPTIONAL)
++endif()
++
+ if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+     include(cmake/dependencies/openbsd.cmake)
+ endif()
+diff --git a/cmake/dependencies/emscripten.cmake b/cmake/dependencies/emscripten.cmake
+new file mode 100644
+index 0000000..ccd093a
+--- /dev/null
++++ b/cmake/dependencies/emscripten.cmake
+@@ -0,0 +1,6 @@
++#=================== ImGui ===================
++# Emscripten provides SDL2 via ports
++# We need to tell ImGui to use it
++target_compile_options(ImGui PUBLIC -sUSE_SDL=2)
++target_link_options(ImGui PUBLIC -sUSE_SDL=2)
++add_compile_definitions(IMGUI_IMPL_OPENGL_ES3)
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 45989b6..1092dc8 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -72,10 +72,10 @@ target_include_directories(libultraship
+ 
+ #=================== Linking ===================
+ if(INCLUDE_MPQ_SUPPORT)
+-    if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+-        target_link_libraries(libultraship PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,storm>")
+-    else()
++    if (CMAKE_SYSTEM_NAME STREQUAL "Windows" OR CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR EMSCRIPTEN)
+         target_link_libraries(libultraship PUBLIC storm)
++    else()
++        target_link_libraries(libultraship PUBLIC "$<LINK_LIBRARY:WHOLE_ARCHIVE,storm>")
+     endif()
+ endif()
+ 
+@@ -89,17 +89,92 @@ if (GFX_DEBUG_DISASSEMBLER)
+     target_link_libraries(libultraship PRIVATE libgfxd)
+ endif()
+ 
+-find_package(libzip REQUIRED)
+-target_link_libraries(libultraship PRIVATE libzip::zip)
++if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT EMSCRIPTEN)
++    find_package(libzip REQUIRED)
++    target_link_libraries(libultraship PRIVATE libzip::zip)
++
++    find_package(nlohmann_json REQUIRED)
++    target_link_libraries(libultraship PUBLIC nlohmann_json::nlohmann_json)
++
++    find_package(tinyxml2 REQUIRED)
++    target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
+ 
+-find_package(nlohmann_json REQUIRED)
+-target_link_libraries(libultraship PUBLIC nlohmann_json::nlohmann_json)
++    find_package(spdlog REQUIRED)
++    target_link_libraries(libultraship PUBLIC spdlog::spdlog)
++else()
++    # For Emscripten, we use FetchContent or the ports system
++    # nlohmann_json, tinyxml2, spdlog should be built from source
++    find_package(nlohmann_json QUIET)
++    if(NOT nlohmann_json_FOUND)
++        include(FetchContent)
++        FetchContent_Declare(
++            nlohmann_json
++            GIT_REPOSITORY https://github.com/nlohmann/json.git
++            GIT_TAG v3.11.3
++        )
++        FetchContent_MakeAvailable(nlohmann_json)
++    endif()
++    target_link_libraries(libultraship PUBLIC nlohmann_json::nlohmann_json)
++
++    find_package(tinyxml2 QUIET)
++    if(NOT tinyxml2_FOUND)
++        FetchContent_Declare(
++            tinyxml2
++            GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
++            GIT_TAG 10.0.0
++        )
++        set(tinyxml2_BUILD_TESTING OFF CACHE BOOL "" FORCE)
++        FetchContent_MakeAvailable(tinyxml2)
++    endif()
++    target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
++
++    find_package(spdlog QUIET)
++    if(NOT spdlog_FOUND)
++        FetchContent_Declare(
++            spdlog
++            GIT_REPOSITORY https://github.com/gabime/spdlog.git
++            GIT_TAG v1.13.0
++        )
++        FetchContent_MakeAvailable(spdlog)
++    endif()
++    target_link_libraries(libultraship PUBLIC spdlog::spdlog)
+ 
+-find_package(tinyxml2 REQUIRED)
+-target_link_libraries(libultraship PUBLIC tinyxml2::tinyxml2)
++    # Pre-build Emscripten's zlib port so find_package(ZLIB) succeeds for libzip.
++    # embuilder builds the port and places headers/libs in the sysroot cache.
++    execute_process(
++        COMMAND embuilder build zlib
++        RESULT_VARIABLE _embuilder_result
++    )
++    if(NOT _embuilder_result EQUAL 0)
++        message(WARNING "embuilder build zlib failed (${_embuilder_result}), trying to continue anyway")
++    endif()
++    # Point CMake at Emscripten's sysroot so find_package(ZLIB) finds the port
++    set(ZLIB_ROOT "$ENV{EMSDK}/upstream/emscripten/cache/sysroot" CACHE PATH "" FORCE)
++    find_package(ZLIB REQUIRED)
++
++    find_package(libzip QUIET)
++    if(NOT libzip_FOUND)
++        FetchContent_Declare(
++            libzip
++            GIT_REPOSITORY https://github.com/nih-at/libzip.git
++            GIT_TAG v1.10.1
++        )
++        set(BUILD_TOOLS OFF CACHE BOOL "" FORCE)
++        set(BUILD_REGRESS OFF CACHE BOOL "" FORCE)
++        set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
++        set(BUILD_DOC OFF CACHE BOOL "" FORCE)
++        set(ENABLE_BZIP2 OFF CACHE BOOL "" FORCE)
++        set(ENABLE_LZMA OFF CACHE BOOL "" FORCE)
++        set(ENABLE_ZSTD OFF CACHE BOOL "" FORCE)
++        FetchContent_MakeAvailable(libzip)
++    endif()
++    # PUBLIC because O2rArchive.h includes zip.h
++    target_link_libraries(libultraship PUBLIC libzip::zip)
+ 
+-find_package(spdlog REQUIRED)
+-target_link_libraries(libultraship PUBLIC spdlog::spdlog)
++    # Add Emscripten compile flags
++    target_compile_options(libultraship PUBLIC -sUSE_SDL=2 -sUSE_ZLIB=1)
++    target_link_options(libultraship PUBLIC -sUSE_SDL=2 -sUSE_ZLIB=1)
++endif()
+ 
+ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+     set(THREADS_PREFER_PTHREAD_FLAG ON)
+@@ -121,7 +196,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+ endif()
+ 
+ if (USE_OPENGLES)
+-    if (CMAKE_SYSTEM_NAME STREQUAL "Android")
++    if (CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR EMSCRIPTEN)
++        # Emscripten provides GLES via WebGL, no library linking needed
++    elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
+         find_library(OPENGLES_LIBRARY GLESv3)
+         target_link_libraries(libultraship PRIVATE GLESv3)
+     elseif(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+@@ -201,6 +278,14 @@ if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+             XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+         )
+     endif()
++elseif(CMAKE_SYSTEM_NAME STREQUAL "Emscripten" OR EMSCRIPTEN)
++    target_compile_definitions(libultraship PRIVATE
++        ENABLE_OPENGL
++        USE_OPENGLES
++        $<$<CONFIG:Debug>:_DEBUG>
++        $<$<NOT:$<CONFIG:Debug>>:NDEBUG>
++        SPDLOG_ACTIVE_LEVEL=${SPDLOG_MIN_CUTOFF}
++    )
+ else()
+     target_compile_definitions(libultraship PRIVATE
+         ENABLE_OPENGL
+diff --git a/src/fast/backends/gfx_opengl.cpp b/src/fast/backends/gfx_opengl.cpp
+index ad9b1dd..f6c06b9 100644
+--- a/src/fast/backends/gfx_opengl.cpp
++++ b/src/fast/backends/gfx_opengl.cpp
+@@ -708,7 +708,7 @@ void GfxRenderingAPIOGL::DrawTriangles(float buf_vbo[], size_t buf_vbo_len, size
+ }
+ 
+ void GfxRenderingAPIOGL::Init() {
+-#if !defined(__linux__) && !defined(__OpenBSD__)
++#if !defined(__linux__) && !defined(__OpenBSD__) && !defined(__EMSCRIPTEN__)
+     glewInit();
+ #endif
+ 
+diff --git a/src/fast/backends/gfx_sdl2.cpp b/src/fast/backends/gfx_sdl2.cpp
+index 15c5415..4ed169e 100644
+--- a/src/fast/backends/gfx_sdl2.cpp
++++ b/src/fast/backends/gfx_sdl2.cpp
+@@ -30,6 +30,12 @@
+ #include <SDL.h>
+ #include "fast/backends/gfx_metal.h"
+ #include "ship/utils/macUtils.h"
++#elif defined(__EMSCRIPTEN__)
++#include <emscripten.h>
++#include <SDL2/SDL.h>
++#define GL_GLEXT_PROTOTYPES 1
++#include <SDL2/SDL_opengles2.h>
++#include <GLES3/gl3.h>
+ #else
+ #include <SDL2/SDL.h>
+ #define GL_GLEXT_PROTOTYPES 1
+@@ -322,7 +328,7 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
+     mWindowWidth = width;
+     mWindowHeight = height;
+ 
+-#if SDL_VERSION_ATLEAST(2, 24, 0)
++#if SDL_VERSION_ATLEAST(2, 24, 0) && !defined(__EMSCRIPTEN__)
+     /* fix DPI scaling issues on Windows */
+     SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
+ #endif
+@@ -345,7 +351,12 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
+         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
+     }
+ 
+-#if defined(__APPLE__)
++#if defined(__EMSCRIPTEN__)
++    // WebGL2 context (maps to OpenGL ES 3.0)
++    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
++    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
++    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
++#elif defined(__APPLE__)
+     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+@@ -695,6 +706,10 @@ static uint64_t qpc_to_100ns(uint64_t qpc) {
+ }
+ 
+ void GfxWindowBackendSDL2::SyncFramerateWithTime() const {
++#ifdef __EMSCRIPTEN__
++    // In Emscripten, the browser controls frame timing via requestAnimationFrame
++    return;
++#endif
+     uint64_t t = qpc_to_100ns(SDL_GetPerformanceCounter());
+ 
+     const int64_t next = previous_time + 10 * FRAME_INTERVAL_US_NUMERATOR / FRAME_INTERVAL_US_DENOMINATOR;
+diff --git a/src/ship/Context.cpp b/src/ship/Context.cpp
+index 361a1f7..aaf333f 100644
+--- a/src/ship/Context.cpp
++++ b/src/ship/Context.cpp
+@@ -125,7 +125,9 @@ bool Context::InitLogging(spdlog::level::level_enum debugBuildLogLevel,
+ 
+     try {
+         // Setup Logging
++#ifndef __EMSCRIPTEN__
+         spdlog::init_thread_pool(8192, 1);
++#endif
+         std::vector<spdlog::sink_ptr> sinks;
+ 
+ #if (!defined(_WIN32)) || defined(_DEBUG)
+@@ -165,12 +167,18 @@ bool Context::InitLogging(spdlog::level::level_enum debugBuildLogLevel,
+         sinks.push_back(systemConsoleSink);
+ #endif
+ 
++#ifndef __EMSCRIPTEN__
+         auto logPath = GetPathRelativeToAppDirectory(("logs/" + GetName() + ".log"));
+         auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logPath, 1024 * 1024 * 10, 10);
+         sinks.push_back(fileSink);
+-#ifdef _DEBUG
++#endif
++#if defined(_DEBUG) || defined(__EMSCRIPTEN__)
+         mLogger = std::make_shared<spdlog::logger>("multi_sink", sinks.begin(), sinks.end());
++#ifdef _DEBUG
+         GetLogger()->set_level(debugBuildLogLevel);
++#else
++        GetLogger()->set_level(releaseBuildLogLevel);
++#endif
+         GetLogger()->flush_on(spdlog::level::trace);
+ #else
+         mLogThreadPool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
+diff --git a/src/ship/resource/ResourceManager.cpp b/src/ship/resource/ResourceManager.cpp
+index c62ee72..1fc613d 100644
+--- a/src/ship/resource/ResourceManager.cpp
++++ b/src/ship/resource/ResourceManager.cpp
+@@ -57,6 +57,7 @@ void ResourceManager::Init(const std::vector<std::string>& archivePaths,
+     GetArchiveManager()->Init(archivePaths, validHashes);
+ 
+     // the extra `- 1` is because we reserve an extra thread for spdlog
++#ifndef __EMSCRIPTEN__
+     size_t threadCount = std::max(1, (int32_t)(std::thread::hardware_concurrency() - reservedThreadCount - 1));
+     mThreadPool = std::make_shared<BS::thread_pool>(threadCount);
+ 
+@@ -64,6 +65,7 @@ void ResourceManager::Init(const std::vector<std::string>& archivePaths,
+         // Nothing ever unpauses the thread pool since nothing will ever try to load the archive again.
+         mThreadPool->pause();
+     }
++#endif
+ }
+ 
+ ResourceManager::~ResourceManager() {
+@@ -214,11 +216,17 @@ ResourceManager::LoadResourceAsync(const ResourceIdentifier& identifier, bool lo
+         return promise->get_future().share();
+     }
+ 
++#ifdef __EMSCRIPTEN__
++    auto promise = std::make_shared<std::promise<std::shared_ptr<IResource>>>();
++    promise->set_value(LoadResourceProcess(identifier, loadExact, initData));
++    return promise->get_future().share();
++#else
+     return mThreadPool->submit_task(
+         [this, identifier, loadExact, initData]() -> std::shared_ptr<IResource> {
+             return LoadResourceProcess(identifier, loadExact, initData);
+         },
+         priority);
++#endif
+ }
+ 
+ std::shared_future<std::shared_ptr<IResource>>
+@@ -332,11 +340,17 @@ ResourceManager::LoadResourcesProcess(const ResourceFilter& filter) {
+ 
+ std::shared_future<std::shared_ptr<std::vector<std::shared_ptr<IResource>>>>
+ ResourceManager::LoadResourcesAsync(const ResourceFilter& filter, BS::priority_t priority) {
++#ifdef __EMSCRIPTEN__
++    auto promise = std::make_shared<std::promise<std::shared_ptr<std::vector<std::shared_ptr<IResource>>>>>();
++    promise->set_value(LoadResourcesProcess(filter));
++    return promise->get_future().share();
++#else
+     return mThreadPool->submit_task(
+         [this, filter]() -> std::shared_ptr<std::vector<std::shared_ptr<IResource>>> {
+             return LoadResourcesProcess(filter);
+         },
+         priority);
++#endif
+ }
+ 
+ std::shared_future<std::shared_ptr<std::vector<std::shared_ptr<IResource>>>>
+@@ -353,7 +367,7 @@ std::shared_ptr<std::vector<std::shared_ptr<IResource>>> ResourceManager::LoadRe
+ }
+ 
+ void ResourceManager::DirtyResources(const ResourceFilter& filter) {
+-    mThreadPool->submit_task([this, filter]() -> void {
++    auto dirtyTask = [this, filter]() -> void {
+         auto list = GetArchiveManager()->ListFiles(filter.IncludeMasks, filter.ExcludeMasks);
+ 
+         for (const auto& key : *list.get()) {
+@@ -365,7 +379,12 @@ void ResourceManager::DirtyResources(const ResourceFilter& filter) {
+                 UnloadResource({ key, filter.Owner, filter.Parent });
+             }
+         }
+-    });
++    };
++#ifdef __EMSCRIPTEN__
++    dirtyTask();
++#else
++    mThreadPool->submit_task(dirtyTask);
++#endif
+ }
+ 
+ void ResourceManager::DirtyResources(const std::string& searchMask) {
+@@ -377,7 +396,11 @@ void ResourceManager::UnloadResourcesAsync(const std::string& searchMask, BS::pr
+ }
+ 
+ void ResourceManager::UnloadResourcesAsync(const ResourceFilter& filter, BS::priority_t priority) {
++#ifdef __EMSCRIPTEN__
++    UnloadResourcesProcess(filter);
++#else
+     mThreadPool->submit_task([this, filter]() -> void { UnloadResourcesProcess(filter); }, priority);
++#endif
+ }
+ 
+ void ResourceManager::UnloadResources(const std::string& searchMask) {

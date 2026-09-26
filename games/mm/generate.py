@@ -257,6 +257,14 @@ def gen_sample(path, d):
     pcm = np.clip(np.round(np.clip(x, -1, 1) * 30000) + dither, -32768, 32767).astype(np.int64)
     book = vadpcm.make_book(two_predictors(pcm.astype(np.float64)))
     data, book, dec = vadpcm.encode(pcm, book, bits=bits)
+    # keep the retail book size (predictor count): pad with copies of our own predictors
+    want = d.get("npred", book["npred"])
+    if want > book["npred"]:
+        per = book["order"] * 8
+        b = list(book["book"])
+        while len(b) < want * per:
+            b += b[:per]
+        book = {"order": book["order"], "npred": want, "book": b[:want * per]}
     data = (data + bytes(d["size"]))[:d["size"]]
     states = vadpcm.loop_state(dec, ls)[:d["nstates"]] if d["nstates"] else []
     states += [0] * (d["nstates"] - len(states))
