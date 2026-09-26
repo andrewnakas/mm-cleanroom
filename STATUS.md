@@ -1,10 +1,21 @@
 # The Legend of Zelda: Majora's Mask clean room: status
 
-_Last update: 2026-09-25 ~23:40_
+_Last update: 2026-09-26 ~07:30_
 
 ## For the morning
-- The build was paused at ~23:40 for low memory; resumed 26 Sep ~01:40 on your go-ahead, with `-j 4` to use less memory.
-- Web build of 2 Ship 2 Harkinian: nothing to look at yet.
+- **The web port boots and renders** (headless, local): intro (Happy Mask Salesman) and the Clock Town attract scene, with the dirty data (dev) and with the **clean** mm.o2r.
+- **Paused again for low memory (needs your OK):** Claude Code stopped the taint scan and a relink at ~07:25. Resume with:
+  - `python -m games.mm.taint_report D:/n64work/mm/dirty/mm.o2r D:/n64work/mm/clean/mm.o2r D:/n64work/mm/dirty/2ship.o2r`
+  - `bash ports/mm2s2h/build_web.sh 2ship` (adds the `?dev=` CVar hook for scripted tests)
+- Not published yet: taint must pass first. Then: play test to gameplay, text/faces/HUD check, publish.
+
+## Pipeline (all working)
+1. `python tools/mm_decompress.py <rom> baserom.dec.z64` (dirty)
+2. ZAPD as a node CLI (`bash ports/mm2s2h/build_web.sh ZAPD`, then `node ZAPD.js ed ... -se OTR --otrfile mm.o2r`) -> dirty mm.o2r (50,496 resources) + 2ship.o2r (port assets)
+3. `python -m games.mm.extract_spec <dirty mm.o2r> <xml N64_US> games/mm/spec D:/n64work/mm/spec_local` (facts: 13,542 textures, 799 palettes, 682 samples)
+4. `python -m games.mm.generate games/mm/spec <kept.o2r> clean/mm.o2r` (12,921 from facts, 621 drawn, 677 samples)
+5. Web build: `python -m ports.mm2s2h.web_patches <2s2h>` + `bash ports/mm2s2h/build_web.sh 2ship` -> 2ship.html/js/wasm (22.8 MB)
+   Fixes found on the way: wasm exceptions, wasm-sjlj libpng, OTRExporter tinyxml2/libzip, ZAPD without threads, and two C signature mismatches that trap in wasm (PadMgr_ThreadEntry, gfx_create_framebuffer).
 
 ## Decisions (log)
 1. **Web route = 2 Ship 2 Harkinian (2S2H, the MM PC port) built with Emscripten**, porting zalo's SoH web patches.

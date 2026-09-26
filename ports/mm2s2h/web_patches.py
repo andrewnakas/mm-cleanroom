@@ -227,6 +227,34 @@ PATCHES = [
      '#endif\n'
      '    {\n'),
 
+    # dev/test hook: ?dev=name:value,... sets integer CVars at startup (the shell puts it in window._devCvars)
+    ("mm/2s2h/BenPort.cpp",
+     '    Ship::Context::GetRawInstance()->GetFileDropMgr()->RegisterDropHandler(SaveManager_HandleFileDropped);\n}\n',
+     '    Ship::Context::GetRawInstance()->GetFileDropMgr()->RegisterDropHandler(SaveManager_HandleFileDropped);\n'
+     '#ifdef __EMSCRIPTEN__\n'
+     '    {\n'
+     '        char* s = (char*)EM_ASM_PTR({\n'
+     '            var v = (typeof window !== "undefined" && typeof window._devCvars === "string") ? window._devCvars : "";\n'
+     '            var n = lengthBytesUTF8(v) + 1;\n'
+     '            var p = _malloc(n);\n'
+     '            stringToUTF8(v, p, n);\n'
+     '            return p;\n'
+     '        });\n'
+     '        char* save = NULL;\n'
+     '        for (char* tok = strtok_r(s, ",", &save); tok; tok = strtok_r(NULL, ",", &save)) {\n'
+     '            char* colon = strrchr(tok, \':\');\n'
+     '            if (colon == NULL) {\n'
+     '                continue;\n'
+     '            }\n'
+     '            *colon = 0;\n'
+     '            CVarSetInteger(tok, atoi(colon + 1));\n'
+     '            SPDLOG_INFO("[web] dev cvar {} = {}", tok, atoi(colon + 1));\n'
+     '        }\n'
+     '        free(s);\n'
+     '    }\n'
+     '#endif\n'
+     '}\n'),
+
     # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
     ("mm/src/code/padmgr.c",
      'void PadMgr_ThreadEntry() {\n',

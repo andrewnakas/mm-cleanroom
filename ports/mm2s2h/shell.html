@@ -38,6 +38,7 @@
 <template id="emscript">{{{ SCRIPT }}}</template>
 <script>
 var Q = new URLSearchParams(location.search);
+window._devCvars = Q.get('dev') || window.MM_DEFAULT_CVARS || '';
 addEventListener('error',function(e){console.log('ERRSTACK '+String(e.error&&e.error.stack?e.error.stack:e.message).split(String.fromCharCode(10)).join(' | '))});
 var statusEl = document.getElementById('status');
 var ARCHIVES = (window.MM_ARCHIVES || ['2ship.o2r', 'mm.o2r']);

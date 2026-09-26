@@ -44,7 +44,10 @@ def streams(files, T):
             yield "smp:" + n, s["data"]
             if s["codec"] in (0, 3) and any(s["book"]):
                 bits = 4 if s["codec"] == 0 else 2
-                pcm = vadpcm.decode(s["data"], {"order": s["order"], "npred": s["npred"], "book": s["book"]}, bits=bits)
+                try:
+                    pcm = vadpcm.decode(s["data"], {"order": s["order"], "npred": s["npred"], "book": s["book"]}, bits=bits)
+                except IndexError:              # a few MM samples name predictors their book lacks: raw bytes only
+                    continue
                 yield "pcm:" + n, pcm.astype(">i2").tobytes()
         elif ty == "OBGI":
             from PIL import Image
