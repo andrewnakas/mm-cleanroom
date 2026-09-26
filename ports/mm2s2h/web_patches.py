@@ -108,6 +108,10 @@ PATCHES = [
      'if(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS")\nadd_library(pathconf OBJECT pathconf.c)\n',
      'if(EMSCRIPTEN)\n    list(REMOVE_ITEM ADDITIONAL_LIBRARY_DEPENDENCIES Threads::Threads)\nendif()\n'
      'if(CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS")\nadd_library(pathconf OBJECT pathconf.c)\n'),
+    ("ZAPDTR/ZAPD/Main.cpp",
+     '\t\t\t\tctpl::thread_pool pool(num_threads > 1 ? num_threads / 2 : 1);\n',
+     '#ifdef __EMSCRIPTEN__\n\t\t\t\tctpl::thread_pool pool(0);  // no threads in the node CLI (runs single threaded below)\n#else\n'
+     '\t\t\t\tctpl::thread_pool pool(num_threads > 1 ? num_threads / 2 : 1);\n#endif\n'),
     ("ZAPDTR/ZAPD/CrashHandler.cpp",
      '#if __has_include(<unistd.h>)\n#define HAS_POSIX 1\n',
      '#if __has_include(<unistd.h>) && !defined(__EMSCRIPTEN__)\n#define HAS_POSIX 1\n'),
@@ -123,7 +127,7 @@ PATCHES = [
      'find_package(PNG REQUIRED)\n',
      'if(EMSCRIPTEN)\n'
      '    # emscripten port (embuilder build libpng)\n'
-     '    set(PNG_LIBRARY "$ENV{EM_CACHE}/sysroot/lib/wasm32-emscripten/libpng.a" CACHE FILEPATH "" FORCE)\n'
+     '    set(PNG_LIBRARY "$ENV{EM_CACHE}/sysroot/lib/wasm32-emscripten/libpng-wasmsjlj.a" CACHE FILEPATH "" FORCE)\n'
      '    set(PNG_PNG_INCLUDE_DIR "$ENV{EM_CACHE}/sysroot/include" CACHE PATH "" FORCE)\n'
      'endif()\n'
      'find_package(PNG REQUIRED)\n'),
@@ -131,7 +135,7 @@ PATCHES = [
      'target_link_libraries(ZAPD ${PROJECT_NAME})\n',
      'target_link_libraries(ZAPD ${PROJECT_NAME})\n'
      'if(EMSCRIPTEN)\n'
-     '    target_link_options(ZAPD PRIVATE -sNODERAWFS=1 -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=268435456 -sSTACK_SIZE=8388608 -sEXIT_RUNTIME=1 -sUSE_LIBPNG=1 -sUSE_ZLIB=1 -sENVIRONMENT=node)\n'
+     '    target_link_options(ZAPD PRIVATE -sNODERAWFS=1 -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=268435456 -sSTACK_SIZE=8388608 -sEXIT_RUNTIME=1 -sUSE_ZLIB=1 -sENVIRONMENT=node -sASSERTIONS=1 -sEXCEPTION_STACK_TRACES=1)\n'
      '    target_compile_options(${PROJECT_NAME} PUBLIC -sUSE_LIBPNG=1 -sUSE_ZLIB=1)\n'
      '    set_target_properties(ZAPD PROPERTIES SUFFIX ".js")\n'
      'endif()\n'),
