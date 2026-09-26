@@ -44,5 +44,8 @@ _Last update: 2026-09-26 ~15:10_
 - `ports/mm2s2h/` web patches, shell, build script.
 
 ## Next
-- Build web + ZAPD, extract dirty mm.o2r, boot with dirty data (dev only) to validate the port.
-- Spec + generate clean mm.o2r, taint scan, publish.
+- File-select window panel: draw the bevelled frame (currently blocky grid tiles).
+- Bombers' Notebook photos: skeleton render needs the idle animation's joint rotations + flex-skeleton matrix loads (`games/mm/portraits.py`, WIP).
+- Hylian-script signs (lottery shop, graves, letter address): draw with our own glyph set.
+- Voices: identify the unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) for TTS placeholders.
+- Verify pause screen/HUD in a proper new game (scripted name entry is flaky; warp saves skip the HUD).
