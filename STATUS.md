@@ -1,6 +1,6 @@
 # The Legend of Zelda: Majora's Mask clean room: status
 
-_Last update: 2026-09-26 ~15:10_
+_Last update: 2026-09-26 ~18:00_
 
 ## For the morning
 - **Play: https://andrewnakas.github.io/mm-cleanroom/** (repo public: andrewnakas/mm-cleanroom). Verified live in headless Edge: title, file select, name entry, Clock Town gameplay.
@@ -13,6 +13,7 @@ _Last update: 2026-09-26 ~15:10_
   Until then the slots use Piper TTS placeholders (`games/mm/voices`). Unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) still use resynthesised outlines.
 - Item icons: 107 rendered from the game's own get-item models with our textures (`games/mm/overrides/icons`).
 - Bombers' Notebook photos: 11 of 21 rendered from the characters' own skeletons (idle-animation pose, flex-skeleton matrices, our drawn eyes bound to segment 8; `games/mm/portraits.py`). The other 10 need correct object mappings/angles and still use the grid fallback.
+- Faces verified on the characters' own posed heads (dev renders with the clean archive): Anju, Cremia, Romani, Kafei, Zoras, Gerudo, Guru-Guru, Ruto read correctly.
 - File-select window drawn as one bevelled panel; Skull Kid balloon painted with Majora's Mask.
 - Test hooks (dev, harmless on the live site): `?dev=cvar:value,...`, `?warp=0xD820&warpat=15`, `Module._web_gamestate()`, `Module._web_scene()`.
 
