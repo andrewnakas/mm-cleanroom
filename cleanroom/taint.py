@@ -37,13 +37,22 @@ def _hashes(buf: bytes, window=WINDOW):
     return h, periodic | (distinct < MIN_DISTINCT)
 
 
-def build_index(streams):
-    """streams: iterable of bytes (retail expressive data)."""
-    hs = []
+def build_index(streams, chunk=8_000_000):
+    """streams: iterable of bytes (retail expressive data).
+    Merged in chunks so peak memory stays near the size of the final index."""
+    index = np.zeros(0, np.uint64)
+    hs, n = [], 0
     for s in streams:
         h, per = _hashes(s)
-        hs.append(h[~per])
-    return np.unique(np.concatenate(hs)) if hs else np.zeros(0, np.uint64)
+        h = h[~per]
+        hs.append(h)
+        n += len(h)
+        if n >= chunk:
+            index = np.union1d(index, np.unique(np.concatenate(hs)))
+            hs, n = [], 0
+    if hs:
+        index = np.union1d(index, np.unique(np.concatenate(hs)))
+    return index
 
 
 FAIL_RUN = 32
