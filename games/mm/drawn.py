@@ -419,6 +419,39 @@ def mm_title_mask(path, d):
     return out
 
 
+def mm_balloon(path, d):
+    """The Skull Kid's balloon: Majora's Mask painted on violet cloth with a soft highlight (our drawing)."""
+    from cleanroom.gfx import facepaint
+    from cleanroom.decomp.gen import h32
+    w, h = d["w"], d["h"]
+    mask = mm_title_mask(path, {"w": w, "h": h})              # full-alpha mask picture
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    u, v = xx / w, yy / h
+    bg = np.stack([60 + 40 * (1 - v), 40 + 20 * (1 - v), 120 + 50 * (1 - v)], -1)
+    g = fbm(h32("balloon", path), w, h, (8, 4, 2))[..., None]
+    bg = bg * (0.9 + 0.2 * g)
+    hl = np.exp(-(((u - 0.72) / 0.12) ** 2 + ((v - 0.2) / 0.12) ** 2))[..., None]
+    bg = bg * (1 - 0.8 * hl) + 240 * 0.8 * hl
+    # the mask shape: heart + horns (as in mm_title_mask), scaled into the middle
+    body = ((((u - 0.36) / 0.2) ** 2 + ((v - 0.45) / 0.2) ** 2) <= 1) | ((((u - 0.64) / 0.2) ** 2 + ((v - 0.45) / 0.2) ** 2) <= 1)
+    body |= (v > 0.45) & (np.abs(u - 0.5) < 0.4 * (1 - (v - 0.45) / 0.45))
+    horns = np.zeros_like(body)
+    for ang in np.linspace(0, 2 * np.pi, 12, endpoint=False):
+        tip = (0.5 + 0.47 * np.cos(ang), 0.5 + 0.44 * np.sin(ang))
+        dist = np.abs((u - 0.5) * np.sin(ang) - (v - 0.5) * np.cos(ang))
+        along = (u - 0.5) * np.cos(ang) + (v - 0.5) * np.sin(ang)
+        horns |= (along > 0.2) & (along < 0.46) & (dist < 0.05 * (0.46 - along) / 0.26)
+    out = np.zeros((h, w, 4), np.float32)
+    out[..., :3] = bg
+    spike = np.stack([230 - 60 * v, 200 - 30 * v, 70 + 20 * v], -1)
+    out[horns & ~body, :3] = spike[horns & ~body]
+    out[body, :3] = mask[body, :3] * 1.25
+    edge = body & ~(np.roll(body, 1, 0) & np.roll(body, -1, 0) & np.roll(body, 1, 1) & np.roll(body, -1, 1))
+    out[edge, :3] = (25, 12, 30)
+    out[..., 3] = 255
+    return np.clip(out, 0, 255)
+
+
 def title_logo(path, d):
     """Title logo: our own shield, sword and ZELDA lettering inside the kept silhouette."""
     w, h = d["w"], d["h"]
@@ -607,6 +640,8 @@ def _texture(path, d):
         return kanji_glyph(path, d)
     if "/nes_font_static/" in path:
         return font_glyph(path, d)
+    if path.endswith("object_fusen/object_fusen_Tex_000E08"):
+        return mm_balloon(path, d)
     if path.endswith("gTitleScreenZeldaLogoTex"):
         return mm_zelda_logo(path, d)
     if path.endswith("gTitleScreenMajorasMaskTex"):
