@@ -53,7 +53,7 @@ def sky_clouds(img, path):
     h, w = img.shape[:2]
     n = fbm(h32("sky", path), w, h)
     lum = img[..., :3].mean(-1) / 255.0
-    cover = np.clip(n * 1.6 + 0.1, 0, 1) * (0.35 + 0.65 * lum)
+    cover = np.clip(n * 1.2 + 0.05, 0, 1) * (0.25 + 0.5 * lum)
     out = img.astype(np.float32)
     out[..., :3] = out[..., :3] * (1 - 0.35 * cover[..., None]) + 245 * 0.35 * cover[..., None]
     out[..., :3] *= (1 + 0.06 * fbm(h32("sky2", path), w, h, (4, 2)))[..., None]
@@ -215,7 +215,7 @@ def gen_textures(T, P, kept, hook_stats):
         elif t in (3, 4):
             if d.get("pal"):
                 if any(k in path for k in SKY):
-                    amp = 18
+                    amp = 9                        # skies: calm (seams and speckle show on big faces)
                 elif path in hooked and ROOMBG.search(path):
                     amp = 22                       # our generated location pictures
                 elif ROOMBG.search(path):
