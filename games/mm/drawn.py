@@ -599,7 +599,7 @@ def _texture(path, d):
         return img
     if path.endswith("gTitleZeldaShieldLogoTex"):
         return title_logo(path, d)
-    if "/icon_item_static/" in path or "/icon_item_24_static/" in path:
+    if "/icon_item_static" in path or "/icon_item_24_static" in path:
         img = icon_override(path, d)
         if img is not None:
             return img

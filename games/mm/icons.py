@@ -150,6 +150,10 @@ TINT = {
 }
 
 
+from games.mm.mm_icons import ICONS  # noqa: E402  (Majora's Mask table replaces the OoT one)
+TINT = {}
+
+
 def tint(img, rgb, mode):
     c = np.asarray(rgb, np.float32) / 255
     lum = img[..., :3].mean(-1, keepdims=True)
