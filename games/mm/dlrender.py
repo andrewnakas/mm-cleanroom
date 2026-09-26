@@ -67,6 +67,8 @@ class Renderer:
         self.size = size
         self.tris = []                       # list of (pos3x3, uv3x2, shade3x4, state dict)
         self.light = np.asarray(light, np.float32) / np.linalg.norm(light)
+        self.offset = np.zeros(3, np.float32)     # limb translation (skeleton bind pose)
+        self.segments = {}                        # segment number -> texture path (eyes/mouths bound by code)
 
     # ---------------------------------------------------------------- DL walk
     def run(self, name, depth=0):
@@ -97,6 +99,10 @@ class Renderer:
                     for i, v in enumerate(a):
                         if 0 <= v0 + i < 64:
                             st["vbuf"][v0 + i] = v
+            elif op == 0xFD:                                   # G_SETTIMG with a segment address
+                seg = (w1 >> 24) & 0xF
+                if seg in self.segments:
+                    st["timg"] = self.segments[seg]
             elif op == 0x05:
                 self.tri(st, (w0 >> 16 & 0xFF) // 2, (w0 >> 8 & 0xFF) // 2, (w0 & 0xFF) // 2)
             elif op in (0x06, 0x07):
@@ -133,7 +139,7 @@ class Renderer:
         vs = [st["vbuf"][i] for i in (a, b, c)]
         if any(v is None for v in vs):
             return
-        pos = np.asarray([[v["x"], v["y"], v["z"]] for v in vs], np.float32)
+        pos = np.asarray([[v["x"], v["y"], v["z"]] for v in vs], np.float32) + self.offset
         col = np.asarray([[v["r"], v["g"], v["b"], v["a"]] for v in vs], np.float32)
         uv = np.asarray([[v["s"], v["t"]] for v in vs], np.float32) / 32.0
         lit = bool(st["geom"] & G_LIGHTING)
@@ -155,6 +161,7 @@ class Renderer:
 
     # ---------------------------------------------------------------- raster
     def draw(self, dls, yaw=0.0, pitch=0.0, roll=0.0, margin=0.08, prim=None, env=None):
+        """dls: display list paths, or (path, (x, y, z) offset) pairs for posed skeleton limbs."""
         self.tris = []
         self.new_state()                        # state carries across the list, like the game's draw code
         if prim is not None:
@@ -162,7 +169,13 @@ class Renderer:
         if env is not None:
             self.state["env"] = np.asarray(env, np.float32) / 255
         for dl in dls:
-            self.run(dl)
+            if isinstance(dl, tuple):
+                self.offset = np.asarray(dl[1], np.float32)
+                self.run(dl[0])
+            else:
+                self.offset = np.zeros(3, np.float32)
+                self.run(dl)
+        self.offset = np.zeros(3, np.float32)
         S = self.size
         img = np.zeros((S, S, 4), np.float32)
         if not self.tris:
