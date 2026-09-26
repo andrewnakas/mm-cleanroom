@@ -22,4 +22,5 @@ if __name__ == "__main__":
     os.chdir(sys.argv[1] if len(sys.argv) > 1 else ".")
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 8064
     print(f"serving {os.getcwd()} on http://localhost:{port}/pw64.html")
+    http.server.ThreadingHTTPServer.allow_reuse_address = False   # Windows would share the port with other sessions
     http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()

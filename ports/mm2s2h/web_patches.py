@@ -23,7 +23,7 @@ if(BUILD_FOR_WEB)
         $<$<COMPILE_LANGUAGE:C>:-Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion>
     )
     target_link_options(${PROJECT_NAME} PRIVATE
-        -sUSE_SDL=2 -sUSE_ZLIB=1 -sUSE_OGG=1 -sUSE_VORBIS=1
+        -sUSE_SDL=2 -sUSE_ZLIB=1 -sUSE_OGG=1 -sUSE_VORBIS=1 -sUSE_LIBPNG=1
         -sALLOW_MEMORY_GROWTH=1
         -sINITIAL_MEMORY=536870912
         -sSTACK_SIZE=8388608
@@ -226,6 +226,26 @@ PATCHES = [
      '    }\n'
      '#endif\n'
      '    {\n'),
+
+    # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
+    ("mm/src/code/padmgr.c",
+     'void PadMgr_ThreadEntry() {\n',
+     'void PadMgr_ThreadEntry(void* arg) {\n'),
+    ("mm/include/functions.h",
+     'void PadMgr_ThreadEntry();\n',
+     'void PadMgr_ThreadEntry(void* arg);\n'),
+    ("mm/2s2h/framebuffer_effects.c",
+     'int gfx_create_framebuffer(uint32_t width, uint32_t height, uint32_t native_width, uint32_t native_height,\n'
+     '                           uint8_t resize);\n',
+     'int gfx_create_framebuffer(uint32_t width, uint32_t height, uint32_t native_width, uint32_t native_height,\n'
+     '                           uint8_t resize, bool forceFixedAspect);\n'),
+] + [
+    ("mm/2s2h/framebuffer_effects.c",
+     f'{v} = gfx_create_framebuffer(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, {r});\n',
+     f'{v} = gfx_create_framebuffer(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, {r}, false);\n')
+    for v, r in (("gPauseFrameBuffer", "true"), ("gBlurFrameBuffer", "true"), ("gReusableFrameBuffer", "true"),
+                 ("gN64ResFrameBuffer", "false"))
+] + [
 
     # ---------------------------------------------------------------- threads elsewhere
     ("mm/2s2h/resource/importer/AudioSampleFactory.cpp",
