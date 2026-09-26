@@ -1,0 +1,12 @@
+The Legend of Zelda: Majora's Mask - clean room web build
+
+Engine: 2 Ship 2 Harkinian (https://github.com/HarbourMasters/2ship2harkinian), CC0 1.0,
+built from the zeldaret/mm decompilation; libultraship (MIT, Copyright (c) 2022 kenix3).
+Web port patches, clean-room asset generation: https://github.com/andrewnakas/mm-cleanroom
+
+Every asset the game takes from the ROM was regenerated: textures from a coarse colour grid and
+alpha outline plus our own detail, text re-typeset in OFL fonts (Marcellus, Montserrat, Noto Sans JP),
+faces, title art and labels drawn from our own descriptions, instruments and sound effects
+resynthesised from coarse outlines. Kept as facts: code, geometry, text, note sequences.
+
+This is a fan project, not affiliated with Nintendo. The Legend of Zelda is a trademark of Nintendo.
