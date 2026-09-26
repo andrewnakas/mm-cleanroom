@@ -1,4 +1,4 @@
-"""Drawn textures for OoT: fonts, re-typeset labels, button glyphs, faces.
+"""Drawn textures for Majora's Mask: fonts, re-typeset labels, button glyphs, faces.
 
 texture(path, d) -> RGBA float array (h, w, 4) or None (use the digest).
 Text uses OFL fonts in games/mm/fonts (Marcellus for the message font,
@@ -13,7 +13,7 @@ import unicodedata
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from games.mm import labels
+from games.mm import mm_labels as labels
 from cleanroom.decomp.gen import from_digest, unpack_alpha2
 
 HERE = os.path.dirname(__file__)
@@ -103,9 +103,11 @@ def _font_char(code, name):
         return "¥"
     if 0x20 <= code < 0x7F:
         return chr(code)
-    m = re.match(r"(Latin(Small|Capital)Letter\w+)", name)
+    if code == 0x96:                     # MM: German sharp s in the Greek-beta slot
+        return "ß"
+    m = re.match(r"((Latin|Greek)\w+|Inverted\w+|FeminineOrdinalIndicator)", name)
     if m:
-        words = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", m.group(1)).upper()
+        words = re.sub(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", " ", m.group(1)).upper()
         try:
             return unicodedata.lookup(words)
         except KeyError:
@@ -151,8 +153,8 @@ def button_glyph(kind, w=16, h=16):
     return None
 
 
-BUTTONS = {0x9F: "A", 0xA0: "B", 0xA1: "C", 0xA2: "L", 0xA3: "R", 0xA4: "Z", 0xA5: "CUp", 0xA6: "CDown",
-           0xA7: "CLeft", 0xA8: "CRight", 0xA9: "ZTarget", 0xAA: "Stick"}
+BUTTONS = {0xB0: "A", 0xB1: "B", 0xB2: "C", 0xB3: "L", 0xB4: "R", 0xB5: "Z", 0xB6: "CUp", 0xB7: "CDown",
+           0xB8: "CLeft", 0xB9: "CRight", 0xBA: "ZTarget", 0xBB: "Stick"}
 
 
 def glyph_mask(ch, w, h, cap_px=11, baseline=13, x0=1):
@@ -283,26 +285,25 @@ def spec():
     return _SPEC
 
 
-PAUSE_TITLES = {"SelectItem": "SELECT ITEM", "QuestStatus": "QUEST STATUS", "Equipment": "EQUIPMENT",
+PAUSE_TITLES = {"SelectItem": "SELECT ITEM", "QuestStatus": "QUEST STATUS", "Masks": "MASKS",
                 "Map": "MAP", "Save": "SAVE", "GameOver": "GAME OVER"}
+_PAUSE_INDEX = None
 
 
 def _find(page, col, row):
-    T = spec()
-    for p in (f"textures/icon_item_nes_static/gPause{page}{col}{row}ENGTex",
-              f"textures/icon_item_static/gPause{page}{col}{row}Tex"):
-        if p in T:
-            return p
-    return None
+    global _PAUSE_INDEX
+    if _PAUSE_INDEX is None:
+        _PAUSE_INDEX = {p.rsplit("/", 1)[1]: p for p in spec() if "/gPause" in p}
+    return _PAUSE_INDEX.get(f"gPause{page}{col}{row}ENGTex") or _PAUSE_INDEX.get(f"gPause{page}{col}{row}Tex")
 
 
 def pause_header(path, d):
-    m = re.search(r"gPause(SelectItem|QuestStatus|Equipment|Map|Save|GameOver)(\d)(\d)(ENG)?Tex$", path)
+    m = re.search(r"gPause(SelectItem|QuestStatus|Masks|Map|Save|GameOver)(\d)(\d)(ENG)?Tex$", path)
     if not m or m.group(3) != "0" or not m.group(4):
         return None
     page, col = m.group(1), int(m.group(2))
     T = spec()
-    cols = [c for c in range(3) if _find(page, c, 0)] if page in ("SelectItem", "QuestStatus") else [col]
+    cols = [c for c in range(3) if _find(page, c, 0)]
     w, h = d["w"], d["h"]
     strip = np.concatenate([stone(_find(page, c, 0), T[_find(page, c, 0)]).astype(np.float32) for c in cols], 1)
     W = strip.shape[1]
@@ -503,7 +504,7 @@ def texture(path, d):
         return font_glyph(path, d)
     if path.endswith("nintendo_rogo_static_Tex_000000"):       # the wordmark under the N64 logo
         return grey_img(text_mask(["Nintendo"], d["w"], d["h"], "sansx", size=26))
-    if "gPause" in path and re.search(r"gPause(SelectItem|QuestStatus|Equipment|Map|Save|GameOver)\d\d", path):
+    if "gPause" in path and re.search(r"gPause(SelectItem|QuestStatus|Masks|Map|Save|GameOver)\d\d", path):
         img = pause_header(path, d)
         if img is not None:
             return img
