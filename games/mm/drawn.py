@@ -661,6 +661,21 @@ def soft_cloud(path, d):
     return grey_img(v)
 
 
+def room_map_fallback(path, d):
+    """floor-plan textures no room names: the shape from the kept 4x4 grid (plain rectangles, L shapes)"""
+    from games.mm.roommaps import style
+    w, h = d["w"], d["h"]
+    n = int(round(len(d["grid"]) ** 0.5))
+    g = np.asarray(d["grid"], np.float32)[:, :3].mean(1).reshape(n, n)
+    cells = (g > 25).astype(np.float32)
+    m = np.kron(cells, np.ones((int(np.ceil(h / n)), int(np.ceil(w / n)))))[:h, :w]
+    v = style(m)
+    img = np.zeros((h, w, 4), np.float32)
+    img[..., :3] = (v * 255)[..., None]
+    img[..., 3] = 255
+    return img
+
+
 def hud_symbols(path, d):
     """pause-screen button symbols and dungeon-map floor buttons: our letters over the kept outline"""
     w, h = d["w"], d["h"]
@@ -770,6 +785,8 @@ def _texture(path, d):
     img = picture_override(path, d)
     if img is not None:
         return img
+    if "/map_grand_static/" in path:
+        return room_map_fallback(path, d)
     img = texture_override(path, d)
     if img is not None:
         return img
