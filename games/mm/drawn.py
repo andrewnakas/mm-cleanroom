@@ -661,6 +661,45 @@ def soft_cloud(path, d):
     return grey_img(v)
 
 
+def hud_symbols(path, d):
+    """pause-screen button symbols and dungeon-map floor buttons: our letters over the kept outline"""
+    w, h = d["w"], d["h"]
+    name = path.rsplit("/", 1)[1]
+    m = re.match(r"g([AB])BtnSymbolTex$", name)
+    if m:
+        return outlined(np.clip(text_mask([m.group(1)], w, h, "sansx", pad_x=0) * 1.3, 0, 1), r=1)
+    if name == "gCBtnSymbolsTex":                      # the three C buttons as arrows
+        cov = np.zeros((h, w), np.float32)
+        step = w / 3.0
+        for i, k in enumerate(("CLeft", "CDown", "CRight")):
+            g = 1 - button_glyph(k, 16, 16)
+            g = g * _disc(16, 16, 7.5, 8.0, 6.6)
+            x0 = int(i * step + (step - 16) / 2)
+            cov[:, max(0, x0):max(0, x0) + 16] = np.maximum(cov[:, max(0, x0):max(0, x0) + 16], g[:h, :min(16, w - max(0, x0))])
+        return outlined(cov, fill=(250, 230, 60), r=1)
+    m = re.match(r"g([RZ])ButtonTex$", name)
+    if m:
+        base = from_digest(path, d).astype(np.float32)
+        t = text_mask([m.group(1)], w, h, "sansx", pad_x=2)
+        base[..., :3] = base[..., :3] * (1 - t[..., None]) + 245 * t[..., None]
+        return base
+    m = re.match(r"gDungeonMap(\d|B\d)(F?)ButtonTex$", name)
+    if m:
+        txt = m.group(1) + m.group(2)
+        base = from_digest(path, d).astype(np.float32)
+        t = text_mask([txt], w, h, "sansx", pad_x=2)
+        base[..., :3] = base[..., :3] * (1 - t[..., None]) + np.array([30, 25, 20], np.float32) * t[..., None]
+        return base
+    if name == "gFileSelBackspaceButtonTex":
+        base = from_digest(path, d).astype(np.float32)
+        t = _tri(w, h, [(w * 0.25, h * 0.5), (w * 0.6, h * 0.2), (w * 0.6, h * 0.8)])
+        t = np.maximum(t, ((np.abs(np.mgrid[0:h, 0:w][0] + 0.5 - h * 0.5) < h * 0.12) &
+                           (np.mgrid[0:h, 0:w][1] > w * 0.5) & (np.mgrid[0:h, 0:w][1] < w * 0.8)).astype(np.float32))
+        base[..., :3] = base[..., :3] * (1 - t[..., None]) + 40 * t[..., None]
+        return base
+    return None
+
+
 def hud_glyph(path, d):
     """HUD counters, message markers, ocarina buttons."""
     w, h = d["w"], d["h"]
@@ -736,6 +775,9 @@ def _texture(path, d):
         return img
     if path.endswith("gTitleZeldaShieldLogoTex"):
         return title_logo(path, d)
+    img = hud_symbols(path, d) if re.search(r"(BtnSymbol|[RZ]ButtonTex|DungeonMap\w*ButtonTex|BackspaceButton)", path) else None
+    if img is not None:
+        return img
     if "/icon_item_static" in path or "/icon_item_24_static" in path:
         img = icon_override(path, d)
         if img is not None:
