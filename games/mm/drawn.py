@@ -868,7 +868,7 @@ def _texture(path, d):
     img = hud_symbols(path, d) if re.search(r"(BtnSymbol|[RZ]ButtonTex|DungeonMap\w*ButtonTex|BackspaceButton)", path) else None
     if img is not None:
         return img
-    if "/icon_item_static" in path or "/icon_item_24_static" in path:
+    if "/icon_item_static" in path or "/icon_item_24_static" in path or re.search(r"gFileSel\w+RemainsTex$", path):
         img = icon_override(path, d)
         if img is not None:
             return img

@@ -148,4 +148,12 @@ ICONS = {
     "gQuestIconBigMagicJarTex": _v([G + "magicpot/gGiMagicJarLargeDL"]),
     "gQuestIconGoldSkulltulaTex": _v([G + "sutaru/gGiSkulltulaTokenDL"], FACE),
     "gQuestIconGoldSkulltula2Tex": _v([G + "sutaru/gGiSkulltulaTokenDL"], FACE),
+    "gItemIconOdolwasRemainsTex": _v(["objects/object_bsmask/gRemainsOdolwaDL"], FACE),
+    "gFileSelOdolwasRemainsTex": _v(["objects/object_bsmask/gRemainsOdolwaDL"], FACE),
+    "gItemIconGohtsRemainsTex": _v(["objects/object_bsmask/gRemainsGohtDL"], FACE),
+    "gFileSelGohtsRemainsTex": _v(["objects/object_bsmask/gRemainsGohtDL"], FACE),
+    "gItemIconGyorgsRemainsTex": _v(["objects/object_bsmask/gRemainsGyorgDL"], FACE),
+    "gFileSelGyorgsRemainsTex": _v(["objects/object_bsmask/gRemainsGyorgDL"], FACE),
+    "gItemIconTwinmoldsRemainsTex": _v(["objects/object_bsmask/gRemainsTwinmoldDL"], FACE),
+    "gFileSelTwinmoldsRemainsTex": _v(["objects/object_bsmask/gRemainsTwinmoldDL"], FACE),
 }

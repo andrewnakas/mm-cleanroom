@@ -11,7 +11,7 @@ _Last update: 2026-09-26 ~18:00_
   Play `practice_<character>_call_and_response.wav` and answer after each beep (SCRIPT.txt lists the lines), then
   `CLEANROOM_GAME=games/mm python -m cleanroom.voice.takes cut <recording> <character> <takes>/<character>`.
   Until then the slots use Piper TTS placeholders (`games/mm/voices`). Unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) still use resynthesised outlines.
-- Item icons: 107 rendered from the game's own get-item models with our textures (`games/mm/overrides/icons`).
+- Item icons: 115 rendered (incl. the four boss remains, also on file select) from the game's own get-item models with our textures (`games/mm/overrides/icons`).
 - Bombers' Notebook photos: 11 of 21 rendered from the characters' own skeletons (idle-animation pose, flex-skeleton matrices, our drawn eyes bound to segment 8; `games/mm/portraits.py`). The other 10 need correct object mappings/angles and still use the grid fallback.
 - Faces verified on the characters' own posed heads (dev renders with the clean archive): Anju, Cremia, Romani, Kafei, Zoras, Gerudo, Guru-Guru, Ruto read correctly.
 - Dungeon/area floor plans (map_grand_static, 98): 90 rendered top-down from each room's own geometry via the scenes' minimap lists (`games/mm/roommaps.py`), drawn in the map style (grey floor, glowing outline); the rest from their grid. Corner minimaps (map_i_static): 51 of 58 the same way, outline style, via the decomp's sMapIForMapGrand table.
