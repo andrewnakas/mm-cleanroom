@@ -17,6 +17,7 @@ _Last update: 2026-09-26 ~18:00_
 - Dungeon/area floor plans (map_grand_static, 98): 90 rendered top-down from each room's own geometry via the scenes' minimap lists (`games/mm/roommaps.py`), drawn in the map style (grey floor, glowing outline); the rest from their grid. Corner minimaps (map_i_static): 51 of 58 the same way, outline style, via the decomp's sMapIForMapGrand table.
 - Pause world map of Termina: painted over the kept 16x16 colour layout (relief, canopy, water, snow ridges; ordered dither); fog clouds drawn soft.
 - Hylian script: an invented glyph set for the Hylian syllabary cells and for signs, letters, deeds and grave inscriptions.
+- HUD numerals/letters drawn: Three-Day Clock hours 1-12, final-hours countdown digits, Bombers' Notebook digits and 18:00, minigame 3/2/1/GO!, PERFECT letters, ocarina note buttons, "Continue playing?", 1/2 ammo.
 - HUD symbols drawn: A/B/C button symbols, R/Z buttons, dungeon-map floor buttons (1F-8F, B1-B8), backspace arrow.
 - File-select window drawn as one bevelled panel; Skull Kid balloon painted with Majora's Mask.
 - Test hooks (dev, harmless on the live site): `?dev=cvar:value,...`, `?warp=0xD820&warpat=15`, `Module._web_gamestate()`, `Module._web_scene()`.

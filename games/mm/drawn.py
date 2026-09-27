@@ -711,6 +711,37 @@ def room_map_fallback(path, d):
     return img
 
 
+def hud_text(path, d):
+    """HUD/minigame numerals and letters (grey intensity textures, tinted by the game)"""
+    w, h = d["w"], d["h"]
+    name = path.rsplit("/", 1)[1]
+    m = re.match(r"g(FinalHoursClock|BombersNotebook)(Digit(\d)|Colon)Tex$", name)
+    if m:
+        ch = m.group(3) if m.group(3) is not None else ":"
+        return grey_img(np.clip(text_mask([ch], w, h, "sansx", pad_x=0) * 1.3, 0, 1))
+    if name == "gBombersNotebook1800Tex":
+        return grey_img(np.clip(text_mask(["18:00"], w, h, "sansx", pad_x=0) * 1.3, 0, 1))
+    m = re.match(r"gThreeDayClockHour(\d+)Tex$", name)
+    if m:
+        return grey_img(np.clip(text_mask([m.group(1)], w, h, "sansx", pad_x=0) * 1.4, 0, 1))
+    m = re.match(r"gMinigameCountdown(\d|Go)Tex$", name)
+    if m:
+        t = "GO!" if m.group(1) == "Go" else m.group(1)
+        return outlined(np.clip(text_mask([t], w, h, "sansx", pad_x=0) * 1.3, 0, 1), r=1)
+    m = re.match(r"gPerfectLetter(\w+?)Tex$", name)
+    if m:
+        t = "!" if m.group(1) == "Exclamation" else m.group(1)
+        return grey_img(np.clip(text_mask([t], w, h, "sansx", pad_x=0) * 1.3, 0, 1))
+    m = re.match(r"gOcarina(A|CUp|CDown|CLeft|CRight)Tex$", name)
+    if m:
+        return grey_img(button_glyph(m.group(1), w, h))
+    if name == "gContinuePlayingNESTex":
+        return outlined(text_mask(["Continue playing?"], w, h, "sansx"), r=1)
+    if name == "gAmmoDigitHalfTex":
+        return outlined(np.clip(text_mask(["1/2"], w, h, "sansx", pad_x=0) * 1.3, 0, 1), r=1)
+    return None
+
+
 def hud_symbols(path, d):
     """pause-screen button symbols and dungeon-map floor buttons: our letters over the kept outline"""
     w, h = d["w"], d["h"]
@@ -831,6 +862,9 @@ def _texture(path, d):
         return img
     if path.endswith("gTitleZeldaShieldLogoTex"):
         return title_logo(path, d)
+    img = hud_text(path, d) if re.search(r"(Digit\d|Colon|1800|ThreeDayClockHour\d|MinigameCountdown|PerfectLetter|gOcarina(A|C)|ContinuePlaying|AmmoDigitHalf)", path) else None
+    if img is not None:
+        return img
     img = hud_symbols(path, d) if re.search(r"(BtnSymbol|[RZ]ButtonTex|DungeonMap\w*ButtonTex|BackspaceButton)", path) else None
     if img is not None:
         return img
