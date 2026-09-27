@@ -1,4 +1,4 @@
-"""Pause world map picture: a top-down render of Hyrule Field's own room
+"""Pause world map picture: a top-down render of Termina Field's own room
 geometry with our textures (dlrender), framed like a parchment map.
 
     python -m games.mm.worldmap <clean oot.o2r> <out png> [--size 216x128]
@@ -12,7 +12,7 @@ from games.mm import o2r
 from games.mm.dlrender import Archive, Renderer
 
 
-def render(arc, prefix="scenes/shared/spot00_scene/spot00_room_0", w=216, h=128, ss=3):
+def render(arc, prefix="scenes/nonmq/Z2_00KEIKOKU/Z2_00KEIKOKU_room_00", w=216, h=128, ss=3):
     dls = sorted(n for n in arc.files if n.startswith(prefix) and o2r.rtype(arc.files[n]) == "ODLT")
     S = max(w, h) * ss
     R = Renderer(arc, S, light=(0.3, 0.9, 0.3), cull=False, alpha_min=-1)
@@ -36,7 +36,8 @@ def render(arc, prefix="scenes/shared/spot00_scene/spot00_room_0", w=216, h=128,
 
 def main(argv):
     arc = Archive(o2r.read_all(argv[1]))
-    img, n = render(arc)
+    kw = {"prefix": argv[argv.index("--prefix") + 1]} if "--prefix" in argv else {}
+    img, n = render(arc, **kw)
     Image.fromarray((img * 255).astype(np.uint8)).save(argv[2])
     print(f"world map: {n} triangles -> {argv[2]}")
 

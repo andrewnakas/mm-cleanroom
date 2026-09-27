@@ -661,6 +661,41 @@ def soft_cloud(path, d):
     return grey_img(v)
 
 
+def world_map_paint(path, d):
+    """Termina overview map: our painting over the kept 16x16 colour layout (regions stay where the
+    game places its markers): organic region edges, relief shading, forest canopy, water streaks."""
+    from cleanroom.decomp.gen import upsample_grid, h32
+    w, h = d["w"], d["h"]
+    n = int(round(len(d["grid"]) ** 0.5))
+    big = upsample_grid(d["grid"], n, w * 2, h * 2)[..., :3]
+    # warp the sampling a little so region borders are organic, not bilinear blobs
+    wx = fbm(h32("wm-wx", path), w, h, (24, 12, 6)) * 3.0
+    wy = fbm(h32("wm-wy", path), w, h, (24, 12, 6)) * 3.0
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    sx = np.clip(((xx + wx) * 2).astype(int), 0, w * 2 - 1)
+    sy = np.clip(((yy + wy) * 2).astype(int), 0, h * 2 - 1)
+    col = big[sy, sx]
+    r, g, b = col[..., 0], col[..., 1], col[..., 2]
+    lum = col.mean(-1)
+    sat = col.max(-1) - col.min(-1)
+    height = lum / 255.0 + 0.35 * fbm(h32("wm-h", path), w, h, (16, 8, 4, 2))
+    shade = 1 + 2.2 * (height - np.roll(np.roll(height, 1, 0), 1, 1))    # light from the upper left
+    out = col * np.clip(shade, 0.6, 1.4)[..., None]
+    forest = (g > r + 8) & (g > b)
+    canopy = fbm(h32("wm-c", path), w, h, (3, 1.5)) * 28
+    out[forest] += canopy[forest][:, None] * np.array([0.6, 1.0, 0.5])
+    water = (b > r + 12) & (b > g - 4)
+    waves = np.sin(yy * 0.9 + 2.5 * fbm(h32("wm-w", path), w, h, (12, 6))) * 5
+    out[water] += waves[water][:, None]
+    snow = (lum > 175) & (sat < 45)
+    ridge = np.abs(fbm(h32("wm-r", path), w, h, (10, 5, 2.5))) * 40
+    out[snow] -= ridge[snow][:, None]
+    img = np.zeros((h, w, 4), np.float32)
+    img[..., :3] = np.clip(out, 0, 255)
+    img[..., 3] = 255
+    return img
+
+
 def room_map_fallback(path, d):
     """floor-plan textures no room names: the shape from the kept 4x4 grid (plain rectangles, L shapes)"""
     from games.mm.roommaps import style
@@ -785,6 +820,10 @@ def _texture(path, d):
     img = picture_override(path, d)
     if img is not None:
         return img
+    if path.endswith("/gWorldMapImageTex"):
+        return world_map_paint(path, d)
+    if re.search(r"gWorldMap\w*Cloud\d*Tex$", path):
+        return soft_cloud(path, d)
     if "/map_grand_static/" in path or re.search(r"/map_i_static/gMapIStatic0[0-4]Tex$", path):
         return room_map_fallback(path, d)
     img = texture_override(path, d)

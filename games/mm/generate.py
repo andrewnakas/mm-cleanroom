@@ -229,7 +229,7 @@ def gen_textures(T, P, kept, hook_stats):
                 if path in RESEED:
                     amp = (amp or 30) + 12
                 idx = index_image(rgba[path], clean_pal[d["pal"][0]], h32("idx2" if path in RESEED else "idx", path), amp=amp,
-                                  ordered=(path in hooked and ROOMBG.search(path) is not None)) + d.get("idx_base", 0)
+                                  ordered=(path in hooked and (ROOMBG.search(path) is not None or path.endswith("gWorldMapImageTex")))) + d.get("idx_base", 0)
             else:                                     # no known palette: grey grid is an index map
                 idx = np.round(rgba[path][..., 0].astype(np.float32) * ((16 if t == 3 else 256) - 1) / 255).astype(np.uint8)
             img = np.zeros(idx.shape + (4,), np.uint8)
