@@ -384,6 +384,34 @@ PATCHES = [
      '            return;\n'
      '        }\n'),
 
+    # ---------------------------------------------------------------- touch controls (shell.html sets window.__touchPad)
+    ("mm/src/code/padmgr.c",
+     '#include "z64voice.h"\n',
+     '#include "z64voice.h"\n'
+     '#ifdef __EMSCRIPTEN__\n'
+     '#include <emscripten.h>\n'
+     '// buttons in the low 16 bits, stick x/y as signed bytes above them; 0 when no touch is active\n'
+     'EM_JS(int, web_touch_pad, (void), {\n'
+     '    var t = window.__touchPad;\n'
+     '    if (!t) return 0;\n'
+     '    return (t.buttons & 0xFFFF) | ((t.sx & 0xFF) << 16) | ((t.sy & 0xFF) << 24);\n'
+     '});\n'
+     '#endif\n'),
+    ("mm/src/code/padmgr.c",
+     '    osContGetReadData(sPadMgrInstance->pads);\n',
+     '    osContGetReadData(sPadMgrInstance->pads);\n'
+     '#ifdef __EMSCRIPTEN__\n'
+     '    {\n'
+     '        int t = web_touch_pad();\n'
+     '        s8 tx = (s8)((t >> 16) & 0xFF), ty = (s8)((t >> 24) & 0xFF);\n'
+     '        sPadMgrInstance->pads[0].button |= (u16)(t & 0xFFFF);\n'
+     '        if (tx != 0 || ty != 0) {\n'
+     '            sPadMgrInstance->pads[0].stick_x = tx;\n'
+     '            sPadMgrInstance->pads[0].stick_y = ty;\n'
+     '        }\n'
+     '    }\n'
+     '#endif\n'),
+
     # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
     ("mm/src/code/padmgr.c",
      'void PadMgr_ThreadEntry() {\n',
