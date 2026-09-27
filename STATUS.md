@@ -2,6 +2,7 @@
 
 _Last update: 2026-09-26 ~18:00_
 
+- **Mobile touch controls** (2026-09-27): floating analog stick on the left, A/B/C diamond on the right, Z/L/R/Start shoulder row; portrait = game on top with controls below, landscape = game centred with controls on the sides. Shown on touch devices (`?touch=1` forces, `?touch=0` hides; the x button hides, and they auto-hide when a gamepad connects). Merged into controller 1 in padmgr.c (analog stick, +-80). Verified headless: touch Start -> file select, stick moves the cursor.
 ## For the morning
 - **Play: https://andrewnakas.github.io/mm-cleanroom/** (repo public: andrewnakas/mm-cleanroom). Verified live in headless Edge: title, file select, name entry, Clock Town gameplay.
 - Taint: 28,739 generated streams, **0 failing**.
