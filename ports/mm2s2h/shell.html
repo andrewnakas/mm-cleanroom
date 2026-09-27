@@ -104,8 +104,10 @@ function keyInfo(code) {
 function sendKey(type, code) {
   var k = keyInfo(code);
   var ev = new KeyboardEvent(type, { code: code, key: k[0], keyCode: k[1], which: k[1], bubbles: true, cancelable: true });
-  Object.defineProperty(ev, 'keyCode', { get: function () { return k[1]; } });   // the constructor ignores keyCode
-  Object.defineProperty(ev, 'which', { get: function () { return k[1]; } });
+  if (KEYS[code]) {   // the constructor ignores keyCode; SDL needs it for non-letter keys (letters map from `key`)
+    Object.defineProperty(ev, 'keyCode', { get: function () { return k[1]; } });
+    Object.defineProperty(ev, 'which', { get: function () { return k[1]; } });
+  }
   (document.activeElement || window).dispatchEvent(ev);
 }
 window.devKey = sendKey;

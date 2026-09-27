@@ -300,6 +300,14 @@ PATCHES = [
      '    }\n'
      '    return -2;\n'
      '}\n'
+     '// HUD state for tests: hudVisibility << 16 | healthAlpha, bit 30 set when Link exists\n'
+     'extern "C" EMSCRIPTEN_KEEPALIVE int web_hud(void) {\n'
+     '    if (gPlayState == NULL || (GameState*)gPlayState != gGameState) {\n'
+     '        return -1;\n'
+     '    }\n'
+     '    return (GET_PLAYER(gPlayState) != NULL ? (1 << 30) : 0) | ((gSaveContext.hudVisibility & 0xFF) << 16) |\n'
+     '           (gPlayState->interfaceCtx.healthAlpha & 0xFFFF);\n'
+     '}\n'
      'extern "C" EMSCRIPTEN_KEEPALIVE int web_scene(void) {\n'
      '    return (gPlayState != NULL && (GameState*)gPlayState == gGameState) ? gPlayState->sceneId : -1;\n'
      '}\n'
@@ -339,7 +347,42 @@ PATCHES = [
      '        }\n'),
     ("mm/src/audio/sfx.c",
      'void AudioSfx_RemoveBankEntry(u8 bankId, u8 entryIndex) {\n    SfxBankEntry* entry = &gSfxBanks[bankId][entryIndex];\n    u8 i;\n',
-     'void AudioSfx_RemoveBankEntry(u8 bankId, u8 entryIndex) {\n    SfxBankEntry* entry = &gSfxBanks[bankId][entryIndex];\n    s32 i;\n'),
+     'void AudioSfx_RemoveBankEntry(u8 bankId, u8 entryIndex) {\n    SfxBankEntry* entry = &gSfxBanks[bankId][entryIndex];\n    s32 i;\n'
+     '    // ChooseActiveSfx can remove the same entry twice in one pass; the second removal would make the\n'
+     '    // entry its own successor (it already heads the free list) and the list walk would never end\n'
+     '    if (entry->state == SFX_STATE_EMPTY) {\n'
+     '        return;\n'
+     '    }\n'),
+    # and never let a damaged bank list hang the game: bound the walk, rebuild the bank's lists
+    ("mm/src/audio/sfx.c",
+     'void AudioSfx_ChooseActiveSfx(u8 bankId) {\n',
+     'static void AudioSfx_RebuildBank(u8 bankId) {\n'
+     '    s32 i;\n'
+     '    sSfxBankListEnd[bankId] = 0;\n'
+     '    sSfxBankFreeListStart[bankId] = 1;\n'
+     '    for (i = 0; i < MAX_CHANNELS_PER_BANK; i++) {\n'
+     '        gActiveSfx[bankId][i].entryIndex = 0xFF;\n'
+     '    }\n'
+     '    gSfxBanks[bankId][0].prev = 0xFF;\n'
+     '    gSfxBanks[bankId][0].next = 0xFF;\n'
+     '    for (i = 1; i < sSfxBankSizes[bankId] - 1; i++) {\n'
+     '        gSfxBanks[bankId][i].prev = i - 1;\n'
+     '        gSfxBanks[bankId][i].next = i + 1;\n'
+     '        gSfxBanks[bankId][i].state = SFX_STATE_EMPTY;\n'
+     '    }\n'
+     '    gSfxBanks[bankId][i].prev = i - 1;\n'
+     '    gSfxBanks[bankId][i].next = 0xFF;\n'
+     '    gSfxBanks[bankId][i].state = SFX_STATE_EMPTY;\n'
+     '}\n'
+     'void AudioSfx_ChooseActiveSfx(u8 bankId) {\n'
+     '    s32 walkGuard = 0;\n'),
+    ("mm/src/audio/sfx.c",
+     '    // Delete stale sfx and prioritize remaining sfx into the gActiveSfx arrays\n    while (entryIndex != 0xFF) {\n',
+     '    // Delete stale sfx and prioritize remaining sfx into the gActiveSfx arrays\n    while (entryIndex != 0xFF) {\n'
+     '        if (++walkGuard > 300) {\n'
+     '            AudioSfx_RebuildBank(bankId);\n'
+     '            return;\n'
+     '        }\n'),
 
     # ---------------------------------------------------------------- signature mismatches (wasm traps on these)
     ("mm/src/code/padmgr.c",
