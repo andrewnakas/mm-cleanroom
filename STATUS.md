@@ -56,4 +56,4 @@ _Last update: 2026-09-26 ~18:00_
 - File-select window panel: draw the bevelled frame (currently blocky grid tiles).
 - Bombers' Notebook photos: fix the remaining 10 (object mapping for Curiosity Shop man, Gorman, Grog, Kamaro, Mayor, Postman, Rosa Sisters, Shiro, Toilet Hand, Toto).
 - Voices: identify the unnamed voice samples (Tatl, Deku/Zora Link, Skull Kid) for TTS placeholders.
-- Verify pause screen/HUD in a proper new game (scripted name entry is flaky; warp saves skip the HUD).
+- Verify pause screen/HUD in a proper new game by hand: my synthetic keys reach file select and the New File menu (Start confirms it) but not name entry, and warp saves skip the HUD. Real keyboards/gamepads send proper events.
