@@ -7,7 +7,8 @@ _Last update: 2026-09-26 ~18:00_
 - Taint: 28,739 generated streams, **0 failing**.
 - Please look at: file select + name entry (re-typeset), title screen (ZELDA logo, mask picture drawn inside the kept silhouettes), faces in Clock Town, the sky.
 - Fixed (26 Sep evening): the freeze in the sound-effect lists (a sfx entry could be removed twice in one pass and the list walk looped forever). Removal is now idempotent and the walk is bounded (a damaged bank is rebuilt instead of hanging). Verified: repeated Clock Town runs no longer freeze.
-- Known issues: HUD not seen yet in my Clock Town test (entrance cutscenes); name-entry keyboard typing in scripted tests.
+- **HUD verified in game** (warp to East/West Clock Town): crisp hearts, model-rendered sword on B, typeset "Speak" on A, rupee counter, Three-Day Clock with "1st", title card "East Clock Town" in our font.
+- Known issues: pause screen not yet seen in game (Start is ignored in my warp save; please open it with a real file); name-entry keyboard typing in scripted tests.
 - **Voices to record**: practice pack at `D:/n64work/mm/practice_pack` (35 lines, 5 characters: link_child, link_adult, goron, fairy, man/Ingo).
   Play `practice_<character>_call_and_response.wav` and answer after each beep (SCRIPT.txt lists the lines), then
   `CLEANROOM_GAME=games/mm python -m cleanroom.voice.takes cut <recording> <character> <takes>/<character>`.
