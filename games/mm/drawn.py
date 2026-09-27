@@ -785,7 +785,7 @@ def _texture(path, d):
     img = picture_override(path, d)
     if img is not None:
         return img
-    if "/map_grand_static/" in path:
+    if "/map_grand_static/" in path or re.search(r"/map_i_static/gMapIStatic0[0-4]Tex$", path):
         return room_map_fallback(path, d)
     img = texture_override(path, d)
     if img is not None:

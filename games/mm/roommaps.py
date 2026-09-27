@@ -18,6 +18,23 @@ from games.mm import o2r
 from games.mm.dlrender import Archive, Renderer
 
 
+# decomp z_map_data.c sMapIForMapGrand: floor plan (map grand index) -> corner-minimap index (map_i_static)
+MAP_I_FOR_GRAND = [None, 1, 2, 3, 4, None, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, None, None, None, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, None, 30, 31, 32, 33, 34, 35, 36, 37, 38, None, None, 39, None, None, None, None, None, None, None, None, None, None, None, None, None, None, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None]
+
+
+def outline_style(m, fy=False, fx=False):
+    if fx:
+        m = m[:, ::-1]
+    if fy:
+        m = m[::-1]
+    inside = (m > 0.5).astype(np.float32)
+    er = inside.copy()
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            er = np.minimum(er, np.roll(np.roll(inside, dy, 0), dx, 1))
+    return np.clip((inside - er) + inside * 0.08, 0, 1)
+
+
 def minimap_lists(files):
     out = {}
     for n in files:
@@ -118,6 +135,26 @@ def main(argv):
         if m is None:
             continue
         v = style(m, bool(fx) ^ bool(flags & 1), bool(fy) ^ bool(flags & 2), rot)
+        img = np.zeros((d["h"], d["w"], 4), np.uint8)
+        img[..., :3] = (v * 255)[..., None].astype(np.uint8)
+        img[..., 3] = 255
+        Image.fromarray(img, "RGBA").save(os.path.join(outdir, name + ".png"))
+        done[name] = img
+    # corner minimaps: same rooms, outline only
+    for mid, (scene, room, flags) in sorted(rooms.items()):
+        k = MAP_I_FOR_GRAND[mid - 0x100] if mid - 0x100 < len(MAP_I_FOR_GRAND) else None
+        if k is None:
+            continue
+        name = f"gMapIStatic{k:02X}Tex"
+        path = f"map_i_static/{name}"
+        if path not in T:
+            continue
+        d = T[path]
+        m = silhouette(arc, scene, room, d["w"], d["h"], margin=0.06)
+        if m is None:
+            continue
+        # the corner minimap is drawn the other way up from the floor plans
+        v = outline_style(m, (not fy) ^ bool(flags & 2), bool(fx) ^ bool(flags & 1)) if k >= 5 else             style(m, bool(fx) ^ bool(flags & 1), (not fy) ^ bool(flags & 2))
         img = np.zeros((d["h"], d["w"], 4), np.uint8)
         img[..., :3] = (v * 255)[..., None].astype(np.uint8)
         img[..., 3] = 255

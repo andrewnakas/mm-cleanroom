@@ -14,7 +14,7 @@ _Last update: 2026-09-26 ~18:00_
 - Item icons: 107 rendered from the game's own get-item models with our textures (`games/mm/overrides/icons`).
 - Bombers' Notebook photos: 11 of 21 rendered from the characters' own skeletons (idle-animation pose, flex-skeleton matrices, our drawn eyes bound to segment 8; `games/mm/portraits.py`). The other 10 need correct object mappings/angles and still use the grid fallback.
 - Faces verified on the characters' own posed heads (dev renders with the clean archive): Anju, Cremia, Romani, Kafei, Zoras, Gerudo, Guru-Guru, Ruto read correctly.
-- Dungeon/area floor plans (map_grand_static, 98): 90 rendered top-down from each room's own geometry via the scenes' minimap lists (`games/mm/roommaps.py`), drawn in the map style (grey floor, glowing outline); the rest from their grid.
+- Dungeon/area floor plans (map_grand_static, 98): 90 rendered top-down from each room's own geometry via the scenes' minimap lists (`games/mm/roommaps.py`), drawn in the map style (grey floor, glowing outline); the rest from their grid. Corner minimaps (map_i_static): 51 of 58 the same way, outline style, via the decomp's sMapIForMapGrand table.
 - Hylian script: an invented glyph set for the Hylian syllabary cells and for signs, letters, deeds and grave inscriptions.
 - HUD symbols drawn: A/B/C button symbols, R/Z buttons, dungeon-map floor buttons (1F-8F, B1-B8), backspace arrow.
 - File-select window drawn as one bevelled panel; Skull Kid balloon painted with Majora's Mask.
