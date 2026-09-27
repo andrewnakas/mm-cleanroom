@@ -711,6 +711,61 @@ def room_map_fallback(path, d):
     return img
 
 
+def hud_sprites(path, d):
+    """HUD icons drawn crisp over the kept outline (IA8, tinted by the game's colours)"""
+    w, h = d["w"], d["h"]
+    name = path.rsplit("/", 1)[1]
+    a = unpack_alpha2(d["alpha2"], w, h).astype(np.float32) if "alpha2" in d else np.full((h, w), 255.0)
+    inside = a > 127
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32) + 0.5
+    er = inside.copy()
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            er &= np.roll(np.roll(inside, dy, 0), dx, 1)
+    edge = inside & ~er
+    m = re.match(r"g(Defense)?Heart(Empty|Quarter|Half|ThreeQuarter|Full)Tex$", name)
+    if m:
+        frac = {"Empty": 0, "Quarter": 0.25, "Half": 0.5, "ThreeQuarter": 0.75, "Full": 1.0}[m.group(2)]
+        ang = (np.degrees(np.arctan2(xx - w / 2, -(yy - h / 2))) + 360) % 360      # clockwise from the top
+        filled = inside & (ang >= 360 * (1 - frac)) if frac < 1 else inside
+        v = np.where(filled, 255.0, 70.0)
+        v = np.where(inside & (np.hypot(xx - w * 0.33, yy - h * 0.3) < w * 0.12) & filled, 255.0, v)
+        v = np.where(edge, 25.0, v)
+        img = np.zeros((h, w, 4), np.float32)
+        img[..., :3] = v[..., None]
+        img[..., 3] = np.where(inside, 255, 0)
+        return img
+    if name == "gButtonBackgroundTex":                  # shaded disc
+        r = np.hypot(xx - w / 2, yy - h / 2) / (w / 2)
+        v = np.clip(1 - r, 0, 1) ** 0.3 * 200 + 40 * np.clip(1 - np.hypot(xx - w * 0.35, yy - h * 0.3) / (w * 0.3), 0, 1)
+        img = np.zeros((h, w, 4), np.float32)
+        img[..., :3] = np.clip(v, 0, 255)[..., None]
+        img[..., 3] = a
+        return img
+    if name in ("gRupeeCounterIconTex", "gSmallKeyCounterIconTex", "gTimerClockIconTex"):
+        W, H = w * SS, h * SS
+        im = Image.new("L", (W, H), 0)
+        dr = ImageDraw.Draw(im)
+        if name == "gRupeeCounterIconTex":
+            dr.polygon([(W * .5, H * .08), (W * .82, H * .3), (W * .82, H * .7), (W * .5, H * .92), (W * .18, H * .7), (W * .18, H * .3)], fill=200, outline=255)
+            dr.polygon([(W * .5, H * .25), (W * .65, H * .38), (W * .65, H * .62), (W * .5, H * .75), (W * .35, H * .62), (W * .35, H * .38)], fill=255)
+        elif name == "gSmallKeyCounterIconTex":
+            dr.ellipse([W * .2, H * .06, W * .58, H * .42], outline=255, width=int(W * .1))
+            dr.line([(W * .39, H * .4), (W * .39, H * .95)], fill=255, width=int(W * .12))
+            dr.line([(W * .39, H * .7), (W * .62, H * .7)], fill=255, width=int(W * .1))
+            dr.line([(W * .39, H * .88), (W * .66, H * .88)], fill=255, width=int(W * .1))
+        else:
+            dr.ellipse([W * .1, H * .1, W * .9, H * .9], fill=190, outline=255, width=int(W * .08))
+            dr.line([(W * .5, H * .5), (W * .5, H * .22)], fill=40, width=int(W * .08))
+            dr.line([(W * .5, H * .5), (W * .7, H * .6)], fill=40, width=int(W * .08))
+        cov = _down(np.asarray(im, np.float32) / 255, w, h)
+        img = np.zeros((h, w, 4), np.float32)
+        img[..., :3] = (cov * 255)[..., None]
+        img[..., 3] = np.clip(cov * 1.6, 0, 1) * 255
+        return img
+    return None
+
+
 def hud_text(path, d):
     """HUD/minigame numerals and letters (grey intensity textures, tinted by the game)"""
     w, h = d["w"], d["h"]
@@ -862,6 +917,9 @@ def _texture(path, d):
         return img
     if path.endswith("gTitleZeldaShieldLogoTex"):
         return title_logo(path, d)
+    img = hud_sprites(path, d) if re.search(r"(Heart(Empty|Quarter|Half|ThreeQuarter|Full)Tex|gButtonBackgroundTex|gRupeeCounterIconTex|gSmallKeyCounterIconTex|gTimerClockIconTex)$", path) else None
+    if img is not None:
+        return img
     img = hud_text(path, d) if re.search(r"(Digit\d|Colon|1800|ThreeDayClockHour\d|MinigameCountdown|PerfectLetter|gOcarina(A|C)|ContinuePlaying|AmmoDigitHalf)", path) else None
     if img is not None:
         return img
