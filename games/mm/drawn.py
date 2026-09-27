@@ -195,6 +195,62 @@ def font_glyph(path, d):
     return grey_img(cov)
 
 
+# ------------------------------------------------------------ Hylian script (our own invented glyphs)
+
+_STROKES = [((0.2, 0.1), (0.2, 0.9)), ((0.8, 0.1), (0.8, 0.9)), ((0.1, 0.2), (0.9, 0.2)), ((0.1, 0.8), (0.9, 0.8)),
+            ((0.1, 0.5), (0.9, 0.5)), ((0.5, 0.1), (0.5, 0.9)), ((0.15, 0.15), (0.85, 0.85)), ((0.85, 0.15), (0.15, 0.85)),
+            ((0.2, 0.9), (0.5, 0.1)), ((0.5, 0.1), (0.8, 0.9)), ((0.2, 0.5), (0.5, 0.9)), ((0.5, 0.9), (0.8, 0.5))]
+
+
+def hylian_mask(key, w, h, weight=0.14):
+    """coverage of one invented Hylian glyph (2-4 strokes chosen from `key`)"""
+    from cleanroom.decomp.gen import h32
+    rng = np.random.default_rng(h32("hylian", key))
+    n = int(rng.integers(2, 5))
+    idx = rng.choice(len(_STROKES), n, replace=False)
+    W, H = w * SS, h * SS
+    img = Image.new("L", (W, H), 0)
+    dr = ImageDraw.Draw(img)
+    lw = max(SS, int(weight * min(W, H)))
+    for i in idx:
+        (x0, y0), (x1, y1) = _STROKES[i]
+        dr.line([(x0 * W, y0 * H), (x1 * W, y1 * H)], fill=255, width=lw)
+    if rng.random() < 0.4:                              # a dot
+        cx, cy = rng.uniform(0.3, 0.7, 2)
+        r = lw * 0.8
+        dr.ellipse([cx * W - r, cy * H - r, cx * W + r, cy * H + r], fill=255)
+    return _down(np.asarray(img, np.float32) / 255, w, h)
+
+
+def hylian_text(path, d):
+    """inscriptions and signs in Hylian: rows of our glyphs over the regenerated base"""
+    from cleanroom.decomp.gen import h32
+    w, h = d["w"], d["h"]
+    base = from_digest(path, d).astype(np.float32)
+    rows = max(1, int(round(h / 14)))
+    rh = h / rows
+    gw = max(4, int(rh * 0.8))
+    cov = np.zeros((h, w), np.float32)
+    k = 0
+    for r in range(rows):
+        y0 = int(r * rh + rh * 0.15)
+        gh = max(3, int(rh * 0.7))
+        for x0 in range(1, w - gw + 1, gw + max(1, gw // 5)):
+            if y0 + gh > h:
+                break
+            m = hylian_mask(f"{path}:{k}", gw, gh)
+            cov[y0:y0 + gh, x0:x0 + gw] = np.maximum(cov[y0:y0 + gh, x0:x0 + gw], m)
+            k += 1
+    lum = base[..., :3].mean(-1)
+    opaque = base[..., 3] > 127
+    ref = lum[opaque].mean() if opaque.any() else lum.mean()
+    ink = np.array([30, 25, 20], np.float32) if ref > 110 else np.array([235, 230, 215], np.float32)
+    base[..., :3] = base[..., :3] * (1 - cov[..., None]) + ink * cov[..., None]
+    if d["type"] in (5, 6, 7, 8, 9, 10):              # intensity formats: the glyphs carry the alpha too
+        base[..., 3] = np.maximum(base[..., 3] * 0.35, cov * 255) if "alpha2" in d else base[..., 3]
+    return base
+
+
 def kanji_glyph(path, d):
     """Shift-JIS font cell (16x16 I4): the character from the name's code."""
     m = re.search(r"gMsgKanji([0-9A-F]{4})", path)
@@ -684,8 +740,14 @@ def _texture(path, d):
         img = icon_override(path, d)
         if img is not None:
             return img
+    mh = re.search(r"gMsgKanji[0-9A-F]{4}Hylian(\w+?)Tex$", path)
+    if mh:
+        return grey_img(hylian_mask(mh.group(1), d["w"] - 2, d["h"] - 2).__array__() if False else
+                        np.pad(hylian_mask(mh.group(1), d["w"] - 4, d["h"] - 4), 2))
     if "/kanji/" in path:
         return kanji_glyph(path, d)
+    if re.search(r"(Inscription|SignText|PostalAddress)\w*Tex$", path) and             not re.search(r"(Triforce|CouplesMask|TingleMap|DungeonMap)", path):   # those are pictures, not script
+        return hylian_text(path, d)
     if "/nes_font_static/" in path:
         return font_glyph(path, d)
     if "gFileSelWindow" in path:

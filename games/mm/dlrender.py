@@ -265,7 +265,7 @@ class Renderer:
             yy, xx = np.nonzero(vis)
             yy, xx = yy[keep] + y0, xx[keep] + x0
             zbuf[yy, xx] = z[vis][keep]
-            if self.mark is not None and ts.get("tex") == self.mark:
+            if self.mark is not None and ts.get("tex") in self.mark:
                 self.mark_px += int(keep.sum())
             img[yy, xx, :3] = np.clip(out[keep, :3], 0, 1)
             img[yy, xx, 3] = 1.0

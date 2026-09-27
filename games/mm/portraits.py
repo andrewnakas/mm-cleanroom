@@ -21,11 +21,11 @@ from games.mm.dlrender import Archive, Renderer
 PHOTOS = {   # notebook photo -> character object (skeleton owner)
     "Anju": "object_an1", "AnjusGrandmother": "object_nb", "BombShopLady": "object_bba",
     "Bombers": "object_cs", "Cremia": "object_ma2", "CuriosityShopMan": "object_fsn",
-    "GormanBrothers": "object_in", "Gorman": "object_ah", "Grog": "object_ds2n",
+    "GormanBrothers": "object_in", "Gorman": "object_ah", "Grog": "object_hs",
     "GuruGuru": "object_fu", "Kafei": "object_test3", "Kamaro": "object_mk",
     "MadameAroma": "object_al", "MadameAromaBright": "object_al", "MayorDotour": "object_dt",
     "Postman": "object_pm", "Romani": "object_ma1", "RosaSisters": "object_rz",
-    "Shiro": "object_sdn", "Toto": "object_zm", "ToiletHand": "object_tsn",
+    "Shiro": "object_sdn", "Toto": "object_zm", "ToiletHand": "object_bjt",
 }
 
 
@@ -226,7 +226,10 @@ def render(arc, files, obj, size=32, ss=4, yaw=0, pitch=5):
     R = Renderer(arc, size * ss, cull=True)
     R.segments = face_segments(files, obj)
     R.limb_mtx = flex
-    R.mark = R.segments.get(8)
+    marks = {t for dl, _ in parts for t in dl_textures(arc, dl) if isinstance(t, str) and re.search(r"(Eye|Face)", t)}
+    if R.segments.get(8):
+        marks.add(R.segments[8])
+    R.mark = marks
     best = None
     for y in (0, 45, 90, 135, 180, 225, 270, 315):      # the view that shows the most of the eyes
         for pt in (-20, 5):
