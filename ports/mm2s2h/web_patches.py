@@ -313,6 +313,32 @@ PATCHES = [
      '}\n'
      '#endif\n'),
 
+    # a failed script load answers 0xFFFFFFFF: index 255 of the 16-entry done-pointer table read a
+    # stray pointer and "*isDone = false" zeroed a byte somewhere in memory (the intro crashed with
+    # "memory access out of bounds" in osRecvMesg once that byte landed in a message queue)
+    ("mm/src/audio/lib/load.c",
+     '        temp = sp20 >> 24;\n        isDone = sScriptLoadDonePointers[temp];\n',
+     '        temp = sp20 >> 24;\n'
+     '        isDone = (temp < ARRAY_COUNT(sScriptLoadDonePointers)) ? sScriptLoadDonePointers[temp] : NULL;\n'),
+
+    # the intro crash ("memory access out of bounds" in osRecvMesg, ~25 s into the title sequence): a
+    # note still playing from a position past its sample's loop end makes no progress in the decode
+    # loop, the note-buffer offset runs negative and the mixer writes sample data outside its DMEM
+    # buffer, over whatever globals follow (seen: the script-load message queue). End such a note.
+    ("mm/src/audio/lib/synthesis.c",
+     '                numSamplesUntilEnd = sampleEndPos - synthState->samplePosInt;\n',
+     '                numSamplesUntilEnd = sampleEndPos - synthState->samplePosInt;\n'
+     '\n'
+     '                // [web] a play position past the end, or a loop that starts at/after the end, makes no\n'
+     '                // progress here: the offsets below run negative and the mixer writes outside its buffer\n'
+     '                // (that corrupted other audio state and crashed the intro). End the note instead.\n'
+     '                if ((numSamplesUntilEnd < 0) ||\n'
+     '                    ((numSamplesUntilEnd == 0) && (loopInfo->count != 0) &&\n'
+     '                     !((loopInfo->count == 2) && synthState->stopLoop) && ((s32)loopInfo->start >= sampleEndPos))) {\n'
+     '                    sampleFinished = true;\n'
+     '                    goto skip;\n'
+     '                }\n'),
+
     # sfx requests naming a bank that doesn't exist would write past gSfxBanks (wasm memory layout
     # makes that corrupt the bank lists): drop them
     ("mm/src/audio/sfx.c",
